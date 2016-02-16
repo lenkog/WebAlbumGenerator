@@ -1995,7 +1995,12 @@ class WAG_item
         if ($div === FALSE) {
             return floatval($n);
         } else {
-            return "1/" . (intval(substr($n, $div + 1)) / intval(substr($n, 0, $div)));
+            $denom = intval(substr($n, 0, $div));
+            if ($denom == 0) {
+                return 0;
+            } else {
+                return "1/" . (intval(substr($n, $div + 1)) / $denom);
+            }
         }
     }
 }
