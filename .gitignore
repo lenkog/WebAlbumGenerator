@@ -1,0 +1,8 @@
+/.vscode
+/.gradle
+/node_modules
+/build
+
+/releases
+/test
+/scratchpad

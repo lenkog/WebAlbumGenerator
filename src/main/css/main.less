@@ -1,0 +1,111 @@
+@FG_COLOR:#000000;
+@BG_COLOR: #f0f0f0;
+@HILITE_COLOR: #1eb9a3;
+@THUMB_BG_COLOR: #ffffff;
+@THUMB_SIZE: 125px;
+@LINK_BORDER: 1px;
+@SLAB_PADDING: 3px;
+
+.wagBody {
+    border: 0px;
+    margin: 0px;
+}
+.wagContainer {
+    padding: 1ex;
+    color: @FG_COLOR;
+    background-color: @BG_COLOR;
+    font-family: sans-serif;
+}
+.wagContainer a img {
+    border: none;
+}
+.wagBreadcrumbs {
+    min-height: 1.2em;
+    margin: 0px 3px 1em 3px;
+    padding: 3px;
+    font-size: small;
+}
+.wagBreadcrumb {
+    display: inline-block;
+}
+.wagErrorMsg {
+    color: #ff0000;
+    font-weight: bold;
+    margin: 1ex 0px;
+}
+.wagLink {
+    display: inline-block;
+    vertical-align: top;
+    padding: 1px 3px;
+    color: @FG_COLOR;
+    background-color: @BG_COLOR;
+    border: @LINK_BORDER solid @FG_COLOR;
+    border-radius: 3px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.wagLink:hover {
+    color: @FG_COLOR;
+    background-color: @HILITE_COLOR;
+}
+.wagSpaceOnLeft {
+    padding-left: .5ex;
+}
+.wagItemHeader {
+    margin-bottom: 1ex;
+}
+.wagItemCaption {
+    display: inline-block;
+    margin: 0px 1em;
+    vertical-align: middle;
+    font-weight: bold;
+}
+.wagSlab {
+    display: inline-block;
+    text-align: center;
+    vertical-align: top;
+    width: @THUMB_SIZE + 8px;
+    margin: 0px;
+    margin-bottom: .7ex;
+    padding: 0px;
+    font-size: small;
+}
+.wagSlabLink {
+    position: relative;
+    margin: 0px;
+    padding: @SLAB_PADDING;
+    width: @THUMB_SIZE + 2 * @SLAB_PADDING + 2 * @LINK_BORDER;
+    height: @THUMB_SIZE + 2 * @SLAB_PADDING + 2 * @LINK_BORDER;
+    background-color: @THUMB_BG_COLOR;
+    display: table-cell;
+    vertical-align: middle;
+    overflow: hidden;
+}
+.wagSlabAlbumLink {
+    padding-right: @SLAB_PADDING + 4px;
+    padding-bottom: @SLAB_PADDING + 4px;
+}
+.wagSlabThumbnail {
+    display: block;
+    max-width: @THUMB_SIZE;
+    max-height: @THUMB_SIZE;
+    margin-left: auto;
+    margin-right: auto;
+    border: 0px;
+}
+.wagSlabAlbumThumbnail {
+    max-width: @THUMB_SIZE - 4px;
+    max-height: @THUMB_SIZE - 4px;
+}
+.wagSlabOverlay {
+    position: absolute;
+    margin: @SLAB_PADDING;
+    top: 0;
+    left: 0;
+    border: 0px;
+}
+.wagImage, .wagVideo {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}

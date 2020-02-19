@@ -1,0 +1,86 @@
+plugins {
+    id 'base'
+}
+
+ext.packageJson = file('package.json')
+
+def getNPMPackageVer() {
+    return new groovy.json.JsonSlurper().parseText(packageJson.text).version
+}
+
+def injectJS(php) {
+    def js = file("${buildDir}/main.js").text
+    return php.replace('\'//JS_SCRIPT_IN_PHP\'', '\n<<<\'JS_SCRIPT_IN_PHP\'\n' + js + '\nJS_SCRIPT_IN_PHP\n')
+}
+
+def injectAssets(php) {
+    def assets = ''
+    file('assets').listFiles().each { file ->
+        assets += '\n\'' + file.name.lastIndexOf('.').with{ it != -1 ? file.name.substring(0, it) : file.name } + '\' => \'' + file.bytes.encodeBase64() + '\','
+    }
+    return php.replaceFirst('\\s*// ASSETS_IN_PHP', assets)
+}
+
+task updateNPMPackageVer() {
+    doLast() {
+        def oldVer = getNPMPackageVer()
+        def newPackageConfig = packageJson.text.replaceFirst("\"${oldVer}\"", "\"${version}\"")
+        // confirm we replaced the correct thing
+        if (new groovy.json.JsonSlurper().parseText(newPackageConfig).version != version) {
+            throw new GradleException('Failed to update NPM package version. Please update manually or move the version attribute to the top of package.json.')
+        }
+        packageJson.text = newPackageConfig
+    }
+}
+
+task runWebpack() {
+    inputs.dir(file('src/main/js'))
+    inputs.dir(file('src/main/css'))
+    inputs.files(fileTree(dir: projectDir, include: '*.json'))
+    inputs.files(file('webpack.config.js'))
+    outputs.files(file("${buildDir}/main.js"))
+
+    doLast {
+        if (getNPMPackageVer() != version) {
+            throw new GradleException('The version in package.json does not match the version of the Gradle build.')
+        }
+        exec {
+            workingDir projectDir
+            commandLine 'npm', 'run', 'build'
+        }
+    }
+}
+
+task assemblePHP(dependsOn: runWebpack) {
+    inputs.files(file('src/main/php/wag.php'))
+    inputs.files(file("${buildDir}/main.js"))
+    inputs.files(fileTree(dir: file('assets')))
+    outputs.files(file("${buildDir}/wag.php"))
+
+    doLast {
+        def php = file('src/main/php/wag.php').text
+        file("${buildDir}/wag.php").text = injectJS(injectAssets(php))
+    }
+}
+
+assemble.dependsOn assemblePHP
+
+check.dependsOn assemble
+check.doLast {
+    copy {
+        from file('test')
+        into buildDir
+    }
+}
+
+task regenerateTestPHP() {
+    doLast {
+        copy {
+            from "${projectDir}/src/main/php/wag.php"
+            into buildDir
+            rename '.*', 'test.php'
+        }
+        def testPHP = file("${buildDir}/test.php")
+        testPHP.text = '<?php\nheader("Access-Control-Allow-Origin: *");\n//' + injectAssets(testPHP.text)
+    }
+}
