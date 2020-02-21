@@ -1,17 +1,12 @@
 <template>
     <span>
         <div class="wagSlab">
-            <router-link
-                :to="model.path"
-                class="wagLink wagSlabLink"
-                :class="{wagSlabAlbumLink: isAlbum}"
-            >
+            <router-link :to="model.path" class="wagLink wagSlabLink">
                 <img
                     :src="model.thumbnailURL"
                     :title="model.caption"
                     :alt="model.caption"
                     class="wagSlabThumbnail"
-                    :class="{wagSlabAlbumThumbnail: isAlbum}"
                 />
                 <img
                     v-if="model.overlayURL !== null"
@@ -20,7 +15,7 @@
                     class="wagSlabOverlay"
                 />
             </router-link>
-            {{caption}}
+            {{slabTitle}}
         </div>
         {{ ' ' }}
     </span>
@@ -37,12 +32,11 @@ import { Slab, ItemType } from './models';
 export default class SlabView extends Vue {
     @Prop()
     private model: Slab;
-    isAlbum = false;
-    caption = '';
+    slabTitle = '';
 
     mounted() {
-        this.isAlbum = this.model.type === ItemType.ALBUM;
-        this.caption = this.isAlbum ? this.model.caption : '';
+        this.slabTitle =
+            this.model.type === ItemType.ALBUM ? this.model.caption : '';
     }
 }
 </script>

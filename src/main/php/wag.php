@@ -23,8 +23,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-if (version_compare(PHP_VERSION, '5.4') < 0) {
-    die('PHP version greater than 5.4 is required.');
+if (version_compare(PHP_VERSION, '5.6') < 0) {
+    die('PHP version greater than 5.6 is required.');
 }
 
 function errorHandler($errno, $msg)
@@ -129,21 +129,36 @@ class Video extends Item
 
 class WAG
 {
-    private const APP_PATH = '/app.js';
-    private const API_PATH = '/api';
-    private const PHOTO_EXT = array(
+    const APP_PATH = '/app.js';
+    const API_PATH = '/api';
+    const IMAGE_EXT = array(
         'jpg' => 'image/jpeg',
         'png' => 'image/png',
         'jpeg' => 'image/jpeg',
         'gif' => 'image/gif'
     );
-    private const VIDEO_EXT = array(
+    const VIDEO_EXT = array(
         'webm' => 'video/webm',
         'mp4' => 'video/mp4',
         'mpeg4' => 'video/mp4',
         'm4v' => 'video/mp4'
     );
-    private const ASSET_DEFAULT_THUMBNAIL = 'default-thumbnail';
+    const CACHE_CONTROL = 'max-age=3600';
+    const WAG_DIR = '.wag';
+    const METADATA_FILE = 'meta.json';
+    const THUMBNAIL_FILE = 'tn.jpg';
+    const ASSET_DEFAULT_THUMBNAIL = 'default-thumbnail';
+    const META_CAPTION = 'caption';
+    const META_COPYRIGHT = 'copyright';
+    const META_DATE = 'date';
+    const META_WIDTH = 'width';
+    const META_HEIGHT = 'height';
+    const META_LAT = 'lat';
+    const META_LON = 'lon';
+    const META_SHUTTER = 'shutter';
+    const META_APERTURE = 'aperture';
+    const META_ISO = 'iso';
+    const META_ZOOM = 'zoom';
 
     private $method;
     private $pathSegments;
@@ -159,11 +174,12 @@ class WAG
             $this->serveScript();
             return;
         }
-        if (!self::isAPICall($_SERVER['PATH_INFO'])) {
+        $pathInfo = urldecode(substr($_SERVER['REQUEST_URI'], strlen($this->getScriptURLPath())));
+        if (!self::isAPICall($pathInfo)) {
             throw new Exception('Invalid request path');
         }
         $this->method = $_SERVER['REQUEST_METHOD'];
-        $this->pathSegments = explode('/', substr($_SERVER['PATH_INFO'], strlen(self::API_PATH) + 1));
+        $this->pathSegments = explode('/', substr($pathInfo, strlen(self::API_PATH) + 1));
         if (!empty($_SERVER['QUERY_STRING'])) {
             parse_str($_SERVER['QUERY_STRING'], $this->query);
         }
@@ -174,7 +190,7 @@ class WAG
         if (!method_exists($this, $handler) || !((new ReflectionMethod($this, $handler))->isPublic())) {
             throw new Exception('Invalid API path');
         }
-        array($this, $handler)();
+        call_user_func(array($this, $handler));
     }
 
     private static function isAPICall($path)
@@ -233,7 +249,7 @@ class WAG
                 array_push($album->media, new AlbumEntry(ItemType::VIDEO, $this->getVideoCaption($videoGroup), $entry));
             } else {
                 foreach ($group[ItemType::IMAGE] as $entry) {
-                    array_push($album->media, new AlbumEntry(ItemType::IMAGE, $this->getImageCaption($entry), $entry));
+                    array_push($album->media, new AlbumEntry(ItemType::IMAGE, $this->getItemCaption($entry), $entry));
                 }
             }
         }
@@ -242,14 +258,14 @@ class WAG
 
     private function respondImage($safePath)
     {
-        $image = new Image($this->getImageCaption($safePath), $safePath);
+        $image = new Image($this->getItemCaption($safePath), $safePath);
         self::outputAsJSON($image);
     }
 
     private function respondVideo($safePath)
     {
-        $video = new Video($this->getImageCaption($safePath));
         $videoGroup = $this->getVideoGroup($safePath);
+        $video = new Video($this->getVideoCaption($videoGroup));
         foreach ($videoGroup->videos as $path) {
             $entry = new VideoEntry($path);
             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
@@ -265,32 +281,26 @@ class WAG
         $safePath = $this->getSafePathFromSegments($this->pathSegments);
         $ext = strtolower(pathinfo($safePath, PATHINFO_EXTENSION));
         if ($this->isImage($safePath)) {
-            header('Content-Type: ' . self::PHOTO_EXT[$ext]);
+            header('Content-Type: ' . self::IMAGE_EXT[$ext]);
         } else if ($this->isVideo($safePath)) {
             header('Content-Type: ' . self::VIDEO_EXT[$ext]);
         }
+        header('Cache-Control: ' . self::CACHE_CONTROL);
         $this->serveFile($safePath);
     }
 
     public function thumbnailsGET()
     {
         $safePath = $this->getSafePathFromSegments($this->pathSegments);
-        $image = null;
-        if ($this->isImage($safePath)) {
-            $image = $safePath;
-        } else if ($this->isVideo($safePath)) {
-            $image = $this->getVideoGroup($safePath)->poster;
-        } else if ($this->isDir($safePath)) {
-            $image = $this->getFirstImage($safePath);
-        }
-        if ($image == null) {
+        $thumbnail = self::getMetaDir($safePath) . '/' . self::THUMBNAIL_FILE;
+        if (!$this->isImage($thumbnail)) {
             $this->pathSegments = array(self::ASSET_DEFAULT_THUMBNAIL);
             $this->assetsGET();
             return;
         }
-        $ext = strtolower(pathinfo($image, PATHINFO_EXTENSION));
-        header('Content-Type: ' . self::PHOTO_EXT[$ext]);
-        $this->serveFile($image);
+        header('Content-Type: ' . self::IMAGE_EXT['jpg']);
+        header('Cache-Control: ' . self::CACHE_CONTROL);
+        $this->serveFile($thumbnail);
     }
 
     public function assetsGET()
@@ -299,7 +309,8 @@ class WAG
         if (!$asset) {
             throw new Exception('Invalid asset');
         }
-        header('Content-Type: ' . self::PHOTO_EXT['gif']);
+        header('Content-Type: ' . self::IMAGE_EXT['gif']);
+        header('Cache-Control: ' . self::CACHE_CONTROL);
         echo (base64_decode($asset));
     }
 
@@ -317,7 +328,7 @@ class WAG
 
     private function isDir($safePath)
     {
-        return self::localIsDir($safePath);
+        return basename($safePath) !== '.wag' && self::localIsDir($safePath) && !in_array($safePath . '/password.txt', self::localListDir($safePath), true);
     }
 
     private static function localIsDir($path)
@@ -337,7 +348,7 @@ class WAG
             return FALSE;
         }
         $ext = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
-        if (array_key_exists($ext, self::PHOTO_EXT)) {
+        if (array_key_exists($ext, self::IMAGE_EXT)) {
             return TRUE;
         } else {
             return FALSE;
@@ -395,25 +406,24 @@ class WAG
         return basename($path);
     }
 
-    private function getImageCaption($path)
+    private function getItemCaption($path)
     {
+        $metaFile = $this->getContent(self::getMetaDir($path) . '/' . self::METADATA_FILE);
+        if ($metaFile != null) {
+            $meta = json_decode($metaFile, true);
+            if (array_key_exists(self::META_CAPTION, $meta)) {
+                return $meta[self::META_CAPTION];
+            }
+        }
         return basename($path);
     }
 
     private function getVideoCaption($videoGroup)
     {
-        return basename(reset($videoGroup->videos));
-    }
-
-    private function getFirstImage($safePath)
-    {
-        $entries = $this->listDir($safePath);
-        foreach ($entries as $entry) {
-            if ($this->isImage($entry)) {
-                return $entry;
-            }
+        if ($videoGroup->poster != null) {
+            return $this->getItemCaption($videoGroup->poster);
         }
-        return null;
+        return $this->getItemCaption(reset($videoGroup->videos));
     }
 
     private function getSafePathFromSegments($pathSegments)
@@ -453,9 +463,28 @@ class WAG
             if ($file == '.' || $file == '..') {
                 continue;
             }
-            array_push($entries, ($path !== '' ? $path . '/' : '') . $file);
+            array_push($entries, (strlen($path) > 0 ? $path . '/' : '') . $file);
         }
         return $entries;
+    }
+
+    private function getContent($safePath)
+    {
+        return self::localGetContent($safePath);
+    }
+
+    private static function localGetContent($path)
+    {
+        if (!is_file($path)) {
+            return null;
+        }
+        return file_get_contents($path);
+    }
+
+    private static function getMetaDir($path)
+    {
+        $hash = md5($path);
+        return self::WAG_DIR . '/' . $hash;
     }
 
     private function serveHTML()
@@ -474,7 +503,7 @@ class WAG
         echo ('//JS_SCRIPT_IN_PHP');
     }
 
-    private const Assets = array(
+    const Assets = array(
         // ASSETS_IN_PHP
     );
 }
