@@ -1,5 +1,5 @@
 <template>
-    <div class="wagContainer">
+    <div :id="wagContainerId" class="wagContainer">
         <div class="wagBreadcrumbs">
             <span v-if="breadcrumbs.length > 0">Back to</span>
             <div
@@ -26,7 +26,7 @@ Component.registerHooks([
 
 import Vue from 'vue';
 import { Route } from 'vue-router';
-import { PATHS, ROOT_CAPTION } from './constants';
+import { PATHS, ROOT_CAPTION, WAG_CONTAINER_ID } from './constants';
 import { trailingPath } from './utils';
 import { Breadcrumb, Dim2D } from './models';
 
@@ -34,6 +34,7 @@ import { Breadcrumb, Dim2D } from './models';
 export default class WAG extends Vue {
     windowSize: Dim2D = null;
     breadcrumbs: Breadcrumb[] = [];
+    wagContainerId: string = WAG_CONTAINER_ID;
 
     mounted() {
         this.updateTitle(ROOT_CAPTION);
@@ -59,23 +60,25 @@ export default class WAG extends Vue {
         this.breadcrumbs = [];
 
         let itemPath = null;
-        if (path.startsWith(PATHS.ITEM)) {
+        if (path.startsWith(PATHS.ALBUM)) {
+            itemPath = trailingPath(PATHS.ALBUM, path);
+        } else if (path.startsWith(PATHS.ITEM)) {
             itemPath = trailingPath(PATHS.ITEM, path);
         } else {
-            this.breadcrumbs.push(new Breadcrumb(ROOT_CAPTION, PATHS.ITEM));
+            this.breadcrumbs.push(new Breadcrumb(ROOT_CAPTION, PATHS.ALBUM));
             return;
         }
 
         let sections = itemPath.split('/');
         if (sections.length > 1 || itemPath !== '') {
-            this.breadcrumbs.push(new Breadcrumb(ROOT_CAPTION, PATHS.ITEM));
+            this.breadcrumbs.push(new Breadcrumb(ROOT_CAPTION, PATHS.ALBUM));
         }
         sections.pop();
         for (let i = 0; i < sections.length; ++i) {
             this.breadcrumbs.push(
                 new Breadcrumb(
                     sections[i],
-                    PATHS.ITEM + '/' + sections.slice(0, i + 1).join('/')
+                    PATHS.ALBUM + '/' + sections.slice(0, i + 1).join('/')
                 )
             );
         }

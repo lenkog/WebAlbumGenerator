@@ -81,6 +81,6 @@ task regenerateTestPHP() {
             rename '.*', 'test.php'
         }
         def testPHP = file("${buildDir}/test.php")
-        testPHP.text = '<?php\nheader("Access-Control-Allow-Origin: *");\n//' + injectAssets(testPHP.text)
+        testPHP.text = '<?php\nheader("Access-Control-Allow-Origin: *");\nputenv("WAG_API_SERVER=http://localhost:3000");\n//' + injectAssets(testPHP.text)
     }
 }

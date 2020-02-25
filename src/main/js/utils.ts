@@ -1,4 +1,5 @@
 import { Dim2D } from "./models";
+import { WAG_CONTAINER_ID } from "./constants";
 
 export function trailingPath(prefix: string, fullPath: string): string {
     if (
@@ -15,6 +16,7 @@ export function trailingPath(prefix: string, fullPath: string): string {
 export function getAvailableArea(element: Element): Dim2D {
     let bodyRect = document.body.getBoundingClientRect();
     let bodyStyle = window.getComputedStyle(document.body);
+    let containerStyle = window.getComputedStyle(document.getElementById(WAG_CONTAINER_ID));
     let elementRect = element.getBoundingClientRect();
     return {
         w: Math.max(
@@ -26,6 +28,9 @@ export function getAvailableArea(element: Element): Dim2D {
             parseInt(bodyStyle.borderRightWidth, 10) -
             parseInt(bodyStyle.paddingLeft, 10) -
             parseInt(bodyStyle.paddingRight, 10) -
+            parseInt(containerStyle.marginRight, 10) -
+            parseInt(containerStyle.borderRightWidth, 10) -
+            parseInt(containerStyle.paddingRight, 10) -
             10 // for scrollbar
         ),
         h: Math.max(
@@ -39,7 +44,9 @@ export function getAvailableArea(element: Element): Dim2D {
             parseInt(bodyStyle.borderBottomWidth, 10) -
             parseInt(bodyStyle.paddingTop, 10) -
             parseInt(bodyStyle.paddingBottom, 10) -
-            10 // for scrollbar
+            parseInt(containerStyle.marginBottom, 10) -
+            parseInt(containerStyle.borderBottomWidth, 10) -
+            parseInt(containerStyle.paddingBottom, 10)
         ),
     };
 }

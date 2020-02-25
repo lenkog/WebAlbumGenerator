@@ -1,5 +1,6 @@
 <template>
     <div>
+        <item-header-view :model="model" />
         <div id="wagSlabs">
             <slab-view v-for="album in albums" :key="album.path" :model="album" />
             <slab-view v-for="medium in media" :key="medium.path" :model="medium" />
@@ -10,26 +11,43 @@
 <script lang="ts">
 import Vue from 'vue';
 import Component from 'vue-class-component';
-import { Prop } from 'vue-property-decorator';
 import { Route } from 'vue-router';
 
-import { PATHS } from './constants';
+import { PATHS, ROOT_CAPTION } from './constants';
 import { Slab, Album, ItemType } from './models';
 import SlabView from './SlabView.vue';
-import { getAssetURL, getThumbnailURL, ASSETS } from './service';
+import ItemHeaderView from './ItemHeaderView.vue';
+import { getAssetURL, ASSETS, getAlbum } from './service';
+import { trailingPath } from './utils';
 
 @Component({
     components: {
+        ItemHeaderView,
         SlabView
     }
 })
 export default class AlbumView extends Vue {
-    @Prop()
-    model: Album;
+    path: string = '';
+    model: Album = null;
     albums: Slab[] = [];
     media: Slab[] = [];
 
     mounted() {
+        this.model = null;
+        this.albums = [];
+        this.media = [];
+        this.path = this.$route.params.path;
+        if (typeof this.path === 'undefined') {
+            this.path = '';
+        }
+        getAlbum(this.path, this.onLoaded, null);
+    }
+
+    onLoaded(model: Album) {
+        this.model = model;
+        if (this.path === '') {
+            this.model.caption = ROOT_CAPTION;
+        }
         this.albums = [];
         this.media = [];
         this.model.albums.forEach(info =>
@@ -37,8 +55,8 @@ export default class AlbumView extends Vue {
                 new Slab(
                     info.type,
                     info.caption,
-                    PATHS.ITEM + '/' + info.path,
-                    getThumbnailURL(info.path),
+                    PATHS.ALBUM + '/' + info.path,
+                    info.thumbnail,
                     getAssetURL(ASSETS.OVERLAY_ALBUM)
                 )
             )
@@ -49,13 +67,28 @@ export default class AlbumView extends Vue {
                     info.type,
                     info.caption,
                     PATHS.ITEM + '/' + info.path,
-                    getThumbnailURL(info.path),
+                    info.thumbnail,
                     info.type === ItemType.VIDEO
                         ? getAssetURL(ASSETS.OVERLAY_VIDEO)
                         : null
                 )
             )
         );
+        this.$emit('title', this.model.caption);
+    }
+
+    beforeRouteUpdate(to: Route, from: Route, next: Function) {
+        try {
+            this.model = null;
+            this.albums = [];
+            this.media = [];
+            this.path = trailingPath(PATHS.ALBUM, to.path);
+            getAlbum(this.path, this.onLoaded, null);
+            next();
+        } catch (e) {
+            console.error(e);
+            next(false);
+        }
     }
 }
 </script>

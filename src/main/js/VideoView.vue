@@ -6,19 +6,16 @@
             class="wagVideo"
             controls="controls"
             preload="none"
-            :poster="getPosterURL()"
+            :poster="model.posterURL"
         >
             <source
                 v-for="alternative in model.alternatives"
-                :key="alternative.path"
-                :src="getVideoURL(alternative.path)"
+                :key="alternative.url"
+                :src="alternative.url"
                 :type="alternative.mimeType"
             />
             <div class="wagErrorMsg">This browser does not support the playback of HTML5 videos.</div>
-            <a
-                :href="getVideoURL(model.alternatives[0].path)"
-                class="wagLink"
-            >Click here to download the video.</a>
+            <a :href="model.alternatives[0].url" class="wagLink">Click here to download the video.</a>
         </video>
     </div>
 </template>
@@ -30,7 +27,6 @@ import Vue from 'vue';
 import { Prop } from 'vue-property-decorator';
 import { Dim2D, Video } from './models';
 import { getAvailableArea } from './utils';
-import { getMediumURL } from './service';
 
 @Component({})
 export default class VideoView extends Vue {
@@ -47,17 +43,6 @@ export default class VideoView extends Vue {
     $refs: {
         video: Element;
     };
-
-    getPosterURL() {
-        console.log(this.model);
-        return this.model.posterPath != null
-            ? getMediumURL(this.model.posterPath)
-            : null;
-    }
-
-    getVideoURL(path: string) {
-        return getMediumURL(path);
-    }
 
     mounted() {
         this.onResize();

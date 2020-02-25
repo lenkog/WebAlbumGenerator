@@ -2,7 +2,7 @@
     <div>
         <img
             ref="image"
-            :src="getImageURL()"
+            :src="model.url"
             :style="'maxWidth:' + maxDim.w + 'px; maxHeight:' + maxDim.h + 'px;'"
             class="wagImage"
         />
@@ -16,7 +16,6 @@ import Vue from 'vue';
 import { Prop } from 'vue-property-decorator';
 import { Image, Dim2D } from './models';
 import { getAvailableArea } from './utils';
-import { getMediumURL } from './service';
 
 @Component({})
 export default class ImageView extends Vue {
@@ -33,10 +32,6 @@ export default class ImageView extends Vue {
     $refs: {
         image: Element;
     };
-
-    getImageURL() {
-        return getMediumURL(this.model.path);
-    }
 
     mounted() {
         this.onResize();

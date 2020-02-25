@@ -1,12 +1,11 @@
 import axios from 'axios';
-import { Item } from './models';
+import { Item, Album } from './models';
 
 declare const API_ENDPOINT: string;
 
 enum RESOURCES {
-    ITEM = '/item',
-    MEDIA = '/media',
-    THUMBNAILS = '/thumbnails',
+    ALBUMS = '/albums',
+    ITEMS = '/items',
     ASSETS = '/assets',
 };
 
@@ -15,18 +14,16 @@ export enum ASSETS {
     OVERLAY_VIDEO = 'overlay-video',
 }
 
-export function getItem(path: string, onSuccess: (model: Item) => void, onError: (error: string) => void) {
-    axios.get(API_ENDPOINT + RESOURCES.ITEM + '/' + path).then(
-        (response) => onSuccess(<Item>response.data),
+export function getAlbum(path: string, onSuccess: (model: Album) => void, onError: (error: string) => void) {
+    axios.get(API_ENDPOINT + RESOURCES.ALBUMS + '/' + path).then(
+        (response) => onSuccess(<Album>response.data),
         (error) => (onError != null ? onError(error.data) : console.error));
 }
 
-export function getMediumURL(path: string) {
-    return API_ENDPOINT + RESOURCES.MEDIA + '/' + path;
-}
-
-export function getThumbnailURL(path: string) {
-    return API_ENDPOINT + RESOURCES.THUMBNAILS + '/' + path;
+export function getItem(path: string, onSuccess: (model: Item) => void, onError: (error: string) => void) {
+    axios.get(API_ENDPOINT + RESOURCES.ITEMS + '/' + path).then(
+        (response) => onSuccess(<Item>response.data),
+        (error) => (onError != null ? onError(error.data) : console.error));
 }
 
 export function getAssetURL(name: string) {

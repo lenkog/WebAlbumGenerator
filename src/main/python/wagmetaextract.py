@@ -1,5 +1,6 @@
 import argparse
 import base64
+import datetime
 import hashlib
 import importlib
 import json
@@ -9,13 +10,14 @@ import os
 import sys
 
 import cv2
+import dateutil.parser
 import imageio
 import iptcinfo3
 import numpy
 
 logging.getLogger('iptcinfo').disabled = True
 
-canReadVideos = importlib.util.find_spec("imageio_ffmpeg") is not None
+canReadVideos = importlib.util.find_spec('imageio_ffmpeg') is not None
 
 WAG_DIR = '.wag'
 METADATA_FILE = 'meta.json'
@@ -35,11 +37,13 @@ z10oZq1FYyFwqrxcb97feX37itentPcluESoZjj4R8anKMaYVvFYFTk3QAlZ41ZIiTiZ+XkUahmo
 KDok4pWKssqqyvkKCyh74lo7EoubS7urcetbARwcMUzc03ssrKuswtxsTBwDQF1tfY2drb0d05xR
 wuIgPj7e4f3tQa6+nlAAADs=
 """))
+META_ITEMS = 'items'
 META_CAPTION = 'caption'
 META_COPYRIGHT = 'copyright'
 META_DATE = 'date'
 META_WIDTH = 'width'
 META_HEIGHT = 'height'
+META_SIZE = 'size'
 META_LAT = 'lat'
 META_LON = 'lon'
 META_SHUTTER = 'shutter'
@@ -60,7 +64,7 @@ def isvideo(path):
     return os.path.isfile(path) and os.path.splitext(path)[1].lower() in VIDEO_EXT
 
 
-def process(path, recurse=False):
+def process(path):
     global totalItems
 
     items = getItems(path)
@@ -76,9 +80,8 @@ def process(path, recurse=False):
         processImage(image)
     for video in items[VIDEO]:
         processVideo(video)
-    if recurse:
-        for subfolder in items[ALBUM]:
-            process(subfolder, recurse)
+    for subfolder in items[ALBUM]:
+        process(subfolder)
 
 
 def getItems(path):
@@ -142,6 +145,7 @@ def processAlbum(path):
             (PINKYNAIL_SIZE + PINKYNAIL_SPACING)
         tn[y:(y + PINKYNAIL_SIZE), x:(x + PINKYNAIL_SIZE)] = pinkynail
     outputThumbnail(tn, path)
+    outputMeta(extractAlbumMeta(path), path)
     thumbnailsGenerated += 1
 
 
@@ -171,7 +175,9 @@ def processVideo(group):
         thumbnailsGenerated += 1
         for video in group[VIDEO]:
             outputThumbnail(tn, video)
-            outputMeta(meta, video)
+            videoMeta = extractVideoMeta(video)
+            videoMeta.update(meta)
+            outputMeta(videoMeta, video)
             thumbnailsGenerated += 1
     else:
         for video in group[VIDEO]:
@@ -223,6 +229,70 @@ def makeThumbnail(image, size):
     return image
 
 
+def extractAlbumMeta(path):
+    meta = {}
+
+    meta[META_CAPTION] = os.path.basename(path)
+    meta[META_ITEMS] = {}
+    items = getItems(path)
+    for album in items[ALBUM]:
+        itemId = getMetaId(album)
+        meta[META_ITEMS][itemId] = {
+            META_CAPTION: os.path.basename(album),
+            META_DATE: getLatestAlbumItemDate(album).isoformat(' '),
+        }
+    for image in items[IMAGE]:
+        itemId = getMetaId(image)
+        meta[META_ITEMS][itemId] = trimToAlbumItemMeta(
+            extractImageMeta(image, imageio.imread(image)))
+    for video in items[VIDEO]:
+        for itemVideo in video[VIDEO]:
+            itemId = getMetaId(itemVideo)
+            meta[META_ITEMS][itemId] = trimToAlbumItemMeta(
+                extractVideoMeta(itemVideo))
+        if video[IMAGE]:
+            posterMeta = trimToAlbumItemMeta(extractImageMeta(
+                video[IMAGE], imageio.imread(video[IMAGE])))
+            for itemVideo in video[VIDEO]:
+                itemId = getMetaId(itemVideo)
+                meta[META_ITEMS][itemId].update(posterMeta)
+            posterId = getMetaId(video[IMAGE])
+            meta[META_ITEMS][posterId] = posterMeta
+
+    return meta
+
+
+def getLatestAlbumItemDate(path):
+    latestDate = datetime.datetime.fromtimestamp(0)
+    items = getItems(path)
+    for album in items[ALBUM]:
+        latestDate = max(getLatestAlbumItemDate(album), latestDate)
+    for image in items[IMAGE]:
+        metaDate = extractImageMeta(image, imageio.imread(image))[META_DATE]
+        latestDate = max(dateutil.parser.isoparse(metaDate), latestDate)
+    for video in items[VIDEO]:
+        if video[IMAGE]:
+            metaDate = extractImageMeta(
+                video[IMAGE], imageio.imread(video[IMAGE]))[META_DATE]
+            latestDate = max(dateutil.parser.isoparse(metaDate), latestDate)
+        else:
+            for itemVideo in video[VIDEO]:
+                metaDate = extractVideoMeta(itemVideo)[META_DATE]
+                latestDate = max(
+                    dateutil.parser.isoparse(metaDate), latestDate)
+    if latestDate == datetime.datetime.fromtimestamp(0):
+        latestDate = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+    return latestDate
+
+
+def trimToAlbumItemMeta(fullMeta):
+    meta = {
+        META_CAPTION: fullMeta[META_CAPTION],
+        META_DATE: fullMeta[META_DATE],
+    }
+    return meta
+
+
 def extractImageMeta(path, image):
     meta = {}
     meta[META_HEIGHT] = image.shape[0]
@@ -243,7 +313,8 @@ def extractImageMeta(path, image):
     if exif:
         entry = exif.get('DateTimeOriginal', None)
         if entry:
-            meta[META_DATE] = entry
+            meta[META_DATE] = datetime.datetime.strptime(
+                entry, '%Y:%m:%d %H:%M:%S').isoformat(' ')
         entry = exif.get('GPSLatitude', None)
         if entry:
             meta[META_LAT] = entry
@@ -262,6 +333,13 @@ def extractImageMeta(path, image):
         entry = exif.get('FocalLengthIn35mmFilm', None)
         if entry:
             meta[META_ZOOM] = entry
+
+    if not (META_CAPTION in meta):
+        meta[META_CAPTION] = os.path.basename(path)
+    if not (META_DATE in meta):
+        meta[META_DATE] = datetime.datetime.fromtimestamp(
+            os.path.getmtime(path)).isoformat(' ')
+
     return meta
 
 
@@ -269,11 +347,20 @@ def extractVideoMeta(path):
     if not canReadVideos:
         return {}
     meta = {}
+
     frames = imageio.get_reader(path, 'ffmpeg')
     entry = frames.get_meta_data().get('size', None)
     if entry:
         meta[META_HEIGHT] = entry[1]
         meta[META_WIDTH] = entry[0]
+    meta[META_SIZE] = os.path.getsize(path)
+
+    if not (META_CAPTION in meta):
+        meta[META_CAPTION] = os.path.basename(path)
+    if not (META_DATE in meta):
+        meta[META_DATE] = datetime.datetime.fromtimestamp(
+            os.path.getmtime(path)).isoformat(' ')
+
     return meta
 
 
@@ -295,9 +382,14 @@ def outputThumbnail(image, path):
 def getMetaDir(path):
     global processingBase
 
+    return os.path.join(processingBase, WAG_DIR, getMetaId(path))
+
+
+def getMetaId(path):
+    global processingBase
+
     relPath = os.path.relpath(path, processingBase)
-    hash = hashlib.md5(relPath.encode('utf-8')).hexdigest()
-    return os.path.join(processingBase, WAG_DIR, hash)
+    return hashlib.md5(relPath.encode('utf-8')).hexdigest()
 
 
 def main(argv=None):
@@ -311,19 +403,15 @@ def main(argv=None):
         ourArgv = argv
     parser = argparse.ArgumentParser(
         description='Process a folder to extract metadata for WebAlbumGenarator')
-    parser.add_argument('folder', nargs='+',
+    parser.add_argument('folder',
                         help='folder to process')
-    parser.add_argument('-r', dest='recursive', action='store_true',
-                        help='recurse into subfolders')
     args = parser.parse_args(ourArgv)
-    for folder in args.folder:
-        processingBase = folder
-        totalItems = 0
-        thumbnailsGenerated = 0
-        print('Processing folder', processingBase, '...')
-        process(folder, args.recursive)
-        print('Total items:', totalItems)
-        print('Thumbnails generated:', thumbnailsGenerated)
+    processingBase = args.folder
+    totalItems = 0
+    thumbnailsGenerated = 0
+    process(processingBase)
+    print('Total items:', totalItems)
+    print('Thumbnails generated:', thumbnailsGenerated)
 
 
 if __name__ == "__main__":

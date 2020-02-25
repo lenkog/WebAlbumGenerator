@@ -1,12 +1,8 @@
 <template>
     <div>
-        <div class="wagItemHeader">
-            <div v-if="model!==null" class="wagItemCaption">{{model.caption}}</div>
-            <div v-else class="wagItemCaption">Loading...</div>
-        </div>
+        <item-header-view :model="model" />
         <image-view v-if="isImage()" :model="model" :window-size="windowSize" />
         <video-view v-else-if="isVideo()" :model="model" :window-size="windowSize" />
-        <album-view v-else-if="isAlbum()" :model="model" />
     </div>
 </template>
 
@@ -14,10 +10,10 @@
 import Component from 'vue-class-component';
 
 import Vue from 'vue';
-import AlbumView from './AlbumView.vue';
+import ItemHeaderView from './ItemHeaderView.vue';
 import ImageView from './ImageView.vue';
 import VideoView from './VideoView.vue';
-import { getItem } from './service';
+import { getAlbum, getItem } from './service';
 import { PATHS, ROOT_CAPTION } from './constants';
 import { Route } from 'vue-router';
 import { trailingPath } from './utils';
@@ -26,7 +22,7 @@ import { Prop } from 'vue-property-decorator';
 
 @Component({
     components: {
-        AlbumView,
+        ItemHeaderView,
         ImageView,
         VideoView
     }
@@ -37,10 +33,6 @@ export default class ItemView extends Vue {
 
     path: string = '';
     model: Item = null;
-
-    isAlbum() {
-        return this.model !== null && this.model.type === ItemType.ALBUM;
-    }
 
     isImage() {
         return this.model !== null && this.model.type === ItemType.IMAGE;
@@ -61,9 +53,6 @@ export default class ItemView extends Vue {
 
     onLoaded(model: Item) {
         this.model = model;
-        if (this.model.type === ItemType.ALBUM && this.path === '') {
-            this.model.caption = ROOT_CAPTION;
-        }
         this.$emit('title', this.model.caption);
     }
 

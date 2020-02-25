@@ -18,25 +18,26 @@ export type AlbumEntry = {
     type: ItemType,
     caption: string,
     path: string,
+    thumbnail: string,
 }
 
-export type Album = {
+export type Album = Item & {
     albums: AlbumEntry[],
     media: AlbumEntry[],
 }
 
-export type Image = {
-    path: string,
+export type Image = Item & {
+    url: string,
 }
 
 export type VideoEntry = {
-    path: string,
+    url: string,
     mimeType: string,
 }
 
-export type Video = {
+export type Video = Item & {
     alternatives: VideoEntry[],
-    posterPath: string,
+    posterURL: string,
 }
 
 export class Breadcrumb {
