@@ -9,8 +9,22 @@ import {
 import WAG from './WAG.vue';
 import AlbumView from './AlbumView.vue';
 import ItemView from './ItemView.vue';
+import { ViewReadyInfo } from './models';
 
 window.onload = function () {
+    let pendingScroll: {
+        action: () => void,
+        complete: () => void,
+    } = {
+        action: null,
+        complete: () => {
+            if (pendingScroll.action !== null) {
+                pendingScroll.action();
+                pendingScroll.action = null;
+            }
+        }
+    };
+
     Vue.use(VueRouter);
     const routes = [
         { path: '/', redirect: PATHS.ALBUM + '/' },
@@ -19,11 +33,21 @@ window.onload = function () {
     ]
     const router = new VueRouter({
         routes: routes,
+        scrollBehavior(to, from, savedPosition) {
+            savedPosition = (savedPosition ? savedPosition : { x: 0, y: 0 });
+            pendingScroll.complete();
+            return new Promise((resolve, reject) => pendingScroll.action = () => resolve(savedPosition));
+        },
     });
+
+    function onViewReady(info: ViewReadyInfo) {
+        document.title = info.caption;
+        pendingScroll.complete();
+    }
 
     new Vue({
         router,
         el: '#wag',
-        render: h => h(WAG),
+        render: h => h(WAG, { props: { rootViewReadyHandler: onViewReady } }),
     })
 }

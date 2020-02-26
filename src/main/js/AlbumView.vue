@@ -14,7 +14,7 @@ import Component from 'vue-class-component';
 import { Route } from 'vue-router';
 
 import { PATHS, ROOT_CAPTION } from './constants';
-import { Slab, Album, ItemType } from './models';
+import { Slab, Album, ItemType, ViewReadyInfo } from './models';
 import SlabView from './SlabView.vue';
 import ItemHeaderView from './ItemHeaderView.vue';
 import { getAssetURL, ASSETS, getAlbum } from './service';
@@ -31,6 +31,7 @@ export default class AlbumView extends Vue {
     model: Album = null;
     albums: Slab[] = [];
     media: Slab[] = [];
+    private cancelPendingRequest: () => void = null;
 
     mounted() {
         this.model = null;
@@ -40,7 +41,12 @@ export default class AlbumView extends Vue {
         if (typeof this.path === 'undefined') {
             this.path = '';
         }
-        getAlbum(this.path, this.onLoaded, null);
+        this.cancelPendingRequest = getAlbum(
+            this.path,
+            this.onLoaded,
+            null,
+            this.cancelPendingRequest
+        );
     }
 
     onLoaded(model: Album) {
@@ -74,7 +80,7 @@ export default class AlbumView extends Vue {
                 )
             )
         );
-        this.$emit('title', this.model.caption);
+        this.$emit('viewReady', new ViewReadyInfo(this.model.caption));
     }
 
     beforeRouteUpdate(to: Route, from: Route, next: Function) {
@@ -83,12 +89,21 @@ export default class AlbumView extends Vue {
             this.albums = [];
             this.media = [];
             this.path = trailingPath(PATHS.ALBUM, to.path);
-            getAlbum(this.path, this.onLoaded, null);
+            this.cancelPendingRequest = getAlbum(
+                this.path,
+                this.onLoaded,
+                null,
+                this.cancelPendingRequest
+            );
             next();
         } catch (e) {
             console.error(e);
             next(false);
         }
+    }
+
+    beforeDestroy() {
+        this.cancelPendingRequest();
     }
 }
 </script>

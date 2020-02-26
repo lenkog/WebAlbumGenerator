@@ -3,6 +3,12 @@ export type Dim2D = {
     h: number,
 }
 
+export class ViewReadyInfo {
+    constructor(
+        readonly caption: string,
+    ) { }
+}
+
 export enum ItemType {
     ALBUM = 'album',
     IMAGE = 'image',

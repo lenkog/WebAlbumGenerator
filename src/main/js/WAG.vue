@@ -11,7 +11,7 @@
                 <router-link :to="breadcrumb.path">{{breadcrumb.caption}}</router-link>
             </div>
         </div>
-        <router-view :window-size="windowSize" @title="updateTitle"></router-view>
+        <router-view :window-size="windowSize" @viewReady="rootViewReadyHandler"></router-view>
     </div>
 </template>
 
@@ -28,16 +28,19 @@ import Vue from 'vue';
 import { Route } from 'vue-router';
 import { PATHS, ROOT_CAPTION, WAG_CONTAINER_ID } from './constants';
 import { trailingPath } from './utils';
-import { Breadcrumb, Dim2D } from './models';
+import { Breadcrumb, Dim2D, ViewReadyInfo } from './models';
+import { Prop } from 'vue-property-decorator';
 
 @Component({})
 export default class WAG extends Vue {
+    @Prop()
+    rootViewReadyHandler: (info: ViewReadyInfo) => void;
+
     windowSize: Dim2D = null;
     breadcrumbs: Breadcrumb[] = [];
     wagContainerId: string = WAG_CONTAINER_ID;
 
     mounted() {
-        this.updateTitle(ROOT_CAPTION);
         this.onResize();
         window.addEventListener('resize', this.onResize);
         this.$router.afterEach(this.onPathChange);
@@ -46,10 +49,6 @@ export default class WAG extends Vue {
 
     beforeDestroy() {
         window.removeEventListener('resize', this.onResize);
-    }
-
-    updateTitle(title: string) {
-        document.title = title;
     }
 
     onPathChange(to: Route, from: Route) {

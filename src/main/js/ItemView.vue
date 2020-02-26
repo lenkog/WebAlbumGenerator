@@ -17,7 +17,7 @@ import { getAlbum, getItem } from './service';
 import { PATHS, ROOT_CAPTION } from './constants';
 import { Route } from 'vue-router';
 import { trailingPath } from './utils';
-import { Item, ItemType, Dim2D } from './models';
+import { Item, ItemType, Dim2D, ViewReadyInfo } from './models';
 import { Prop } from 'vue-property-decorator';
 
 @Component({
@@ -33,6 +33,7 @@ export default class ItemView extends Vue {
 
     path: string = '';
     model: Item = null;
+    private cancelPendingRequest: () => void = null;
 
     isImage() {
         return this.model !== null && this.model.type === ItemType.IMAGE;
@@ -48,24 +49,38 @@ export default class ItemView extends Vue {
         if (typeof this.path === 'undefined') {
             this.path = '';
         }
-        getItem(this.path, this.onLoaded, null);
+        this.cancelPendingRequest = getItem(
+            this.path,
+            this.onLoaded,
+            null,
+            this.cancelPendingRequest
+        );
     }
 
     onLoaded(model: Item) {
         this.model = model;
-        this.$emit('title', this.model.caption);
+        this.$emit('viewReady', new ViewReadyInfo(this.model.caption));
     }
 
     beforeRouteUpdate(to: Route, from: Route, next: Function) {
         try {
             this.model = null;
             this.path = trailingPath(PATHS.ITEM, to.path);
-            getItem(this.path, this.onLoaded, null);
+            this.cancelPendingRequest = getItem(
+                this.path,
+                this.onLoaded,
+                null,
+                this.cancelPendingRequest
+            );
             next();
         } catch (e) {
             console.error(e);
             next(false);
         }
+    }
+
+    beforeDestroy() {
+        this.cancelPendingRequest();
     }
 }
 </script>

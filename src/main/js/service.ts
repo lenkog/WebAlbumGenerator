@@ -14,16 +14,54 @@ export enum ASSETS {
     OVERLAY_VIDEO = 'overlay-video',
 }
 
-export function getAlbum(path: string, onSuccess: (model: Album) => void, onError: (error: string) => void) {
-    axios.get(API_ENDPOINT + RESOURCES.ALBUMS + '/' + path).then(
-        (response) => onSuccess(<Album>response.data),
-        (error) => (onError != null ? onError(error.data) : console.error));
+function processError(error: any, userSuppliedHandler: (error: string) => void = null) {
+    if (axios.isCancel(error)) {
+        // cancelled requests are OK
+        return;
+    }
+    let message;
+    if (error.response) {
+        message = error.response.data;
+    } else if (error.request) {
+        message = String(error.request);
+    } else {
+        message = error.message;
+    }
+    if (userSuppliedHandler !== null) {
+        userSuppliedHandler(message);
+    } else {
+        console.error('XHR error', message);
+    }
 }
 
-export function getItem(path: string, onSuccess: (model: Item) => void, onError: (error: string) => void) {
-    axios.get(API_ENDPOINT + RESOURCES.ITEMS + '/' + path).then(
+export function getAlbum(path: string, onSuccess: (model: Album) => void, onError: (error: string) => void, beforeRequest: () => void = null) {
+    if (beforeRequest !== null) {
+        beforeRequest();
+    }
+    let requestCanceller;
+    let requestOptions = {
+        cancelToken: new axios.CancelToken((c) => requestCanceller = c)
+    };
+    axios.get(API_ENDPOINT + RESOURCES.ALBUMS + '/' + path, requestOptions).then(
+        (response) => onSuccess(<Album>response.data),
+        (error) => processError(error, onError),
+    );
+    return requestCanceller;
+}
+
+export function getItem(path: string, onSuccess: (model: Item) => void, onError: (error: string) => void, beforeRequest: () => void = null) {
+    if (beforeRequest !== null) {
+        beforeRequest();
+    }
+    let requestCanceller;
+    let requestOptions = {
+        cancelToken: new axios.CancelToken((c) => requestCanceller = c)
+    };
+    axios.get(API_ENDPOINT + RESOURCES.ITEMS + '/' + path, requestOptions).then(
         (response) => onSuccess(<Item>response.data),
-        (error) => (onError != null ? onError(error.data) : console.error));
+        (error) => processError(error, onError),
+    );
+    return requestCanceller;
 }
 
 export function getAssetURL(name: string) {
