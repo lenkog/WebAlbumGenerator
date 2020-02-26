@@ -1,13 +1,15 @@
 import argparse
 import base64
-import datetime
+import collections
 import hashlib
 import importlib
 import json
 import logging
 import math
+import numbers
 import os
 import sys
+from datetime import datetime
 
 import cv2
 import dateutil.parser
@@ -214,7 +216,7 @@ def makeThumbnail(image, size):
     image = cv2.resize(image, (min(math.ceil(w / scale), size),
                                min(math.ceil(h / scale), size)))
     # get rid of alpha channel, replace with white
-    if image.shape[2] > 3:
+    if len(image.shape) > 2 and image.shape[2] > 3:
         white = numpy.array(WHITE)
         alpha = (image[:, :, 3] / 255).reshape(image.shape[: 2] + (1,))
         image = ((white * (1 - alpha)) +
@@ -263,7 +265,7 @@ def extractAlbumMeta(path):
 
 
 def getLatestAlbumItemDate(path):
-    latestDate = datetime.datetime.fromtimestamp(0)
+    latestDate = datetime.fromtimestamp(0)
     items = getItems(path)
     for album in items[ALBUM]:
         latestDate = max(getLatestAlbumItemDate(album), latestDate)
@@ -280,8 +282,8 @@ def getLatestAlbumItemDate(path):
                 metaDate = extractVideoMeta(itemVideo)[META_DATE]
                 latestDate = max(
                     dateutil.parser.isoparse(metaDate), latestDate)
-    if latestDate == datetime.datetime.fromtimestamp(0):
-        latestDate = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+    if latestDate == datetime.fromtimestamp(0):
+        latestDate = datetime.fromtimestamp(os.path.getmtime(path))
     return latestDate
 
 
@@ -303,44 +305,78 @@ def extractImageMeta(path, image):
         iptc = iptcinfo3.IPTCInfo(path, inp_charset='utf-8')
     if iptc:
         entry = iptc['caption/abstract']
-        if entry:
+        if entry and len(entry.strip()) > 0:
             meta[META_CAPTION] = entry
         entry = iptc['copyright notice']
-        if entry:
+        if entry and len(entry.strip()) > 0:
             meta[META_COPYRIGHT] = entry
 
     exif = image.meta.get('EXIF_MAIN', None)
-    if exif:
+    if exif is not None:
         entry = exif.get('DateTimeOriginal', None)
-        if entry:
-            meta[META_DATE] = datetime.datetime.strptime(
+        if entry is not None:
+            meta[META_DATE] = datetime.strptime(
                 entry, '%Y:%m:%d %H:%M:%S').isoformat(' ')
-        entry = exif.get('GPSLatitude', None)
-        if entry:
-            meta[META_LAT] = entry
-        entry = exif.get('GPSLongitude', None)
-        if entry:
-            meta[META_LON] = entry
+        entry = exif.get('Copyright', None)
+        if entry is not None and not (META_COPYRIGHT in meta) and len(entry.strip()) > 0:
+            meta[META_COPYRIGHT] = entry
+        entry = exif.get('Artist', None)
+        if entry is not None and not (META_COPYRIGHT in meta) and len(entry.strip()) > 0:
+            meta[META_COPYRIGHT] = entry
+        entry = exif.get('GPSInfo', None)
+        if entry is not None and len(entry) > 4:
+            lat = exifDegreeToDecimal(entry[2])
+            if entry[1] == 'S':
+                lat *= -1
+            lon = exifDegreeToDecimal(entry[4])
+            if entry[3] == 'W':
+                lon *= -1
+            meta[META_LAT] = lat
+            meta[META_LON] = lon
         entry = exif.get('ExposureTime', None)
-        if entry:
-            meta[META_SHUTTER] = entry
+        if entry is not None:
+            frac = exifFracToNum(entry)
+            if frac is not None:
+                if frac == 0:
+                    meta[META_SHUTTER] = '0'
+                else:
+                    denominator = int(1 / frac)
+                    meta[META_SHUTTER] = '1/' + str(denominator)
         entry = exif.get('FNumber', None)
-        if entry:
-            meta[META_APERTURE] = entry
+        if entry is not None:
+            frac = exifFracToNum(entry)
+            if frac is not None:
+                meta[META_APERTURE] = round(frac, 2)
         entry = exif.get('ISOSpeedRatings', None)
-        if entry:
+        if entry is not None:
             meta[META_ISO] = entry
         entry = exif.get('FocalLengthIn35mmFilm', None)
-        if entry:
+        if entry is not None:
             meta[META_ZOOM] = entry
 
     if not (META_CAPTION in meta):
         meta[META_CAPTION] = os.path.basename(path)
     if not (META_DATE in meta):
-        meta[META_DATE] = datetime.datetime.fromtimestamp(
+        meta[META_DATE] = datetime.fromtimestamp(
             os.path.getmtime(path)).isoformat(' ')
 
     return meta
+
+
+def exifFracToNum(fraction):
+    if isinstance(fraction, collections.Sequence) and len(fraction) == 2 and float(fraction[1]) != 0:
+        return float(fraction[0]) / float(fraction[1])
+    elif isinstance(fraction, (numbers.Number, str)):
+        return float(fraction)
+    return None
+
+
+def exifDegreeToDecimal(degrees):
+    if isinstance(degrees, collections.Sequence) and len(degrees) == 3:
+        return exifFracToNum(degrees[0]) + exifFracToNum(degrees[1]) / 60 + exifFracToNum(degrees[2]) / 3600
+    elif isinstance(degrees, (numbers.Number, str)):
+        return float(degrees)
+    return None
 
 
 def extractVideoMeta(path):
@@ -350,7 +386,7 @@ def extractVideoMeta(path):
 
     frames = imageio.get_reader(path, 'ffmpeg')
     entry = frames.get_meta_data().get('size', None)
-    if entry:
+    if entry is not None:
         meta[META_HEIGHT] = entry[1]
         meta[META_WIDTH] = entry[0]
     meta[META_SIZE] = os.path.getsize(path)
@@ -358,7 +394,7 @@ def extractVideoMeta(path):
     if not (META_CAPTION in meta):
         meta[META_CAPTION] = os.path.basename(path)
     if not (META_DATE in meta):
-        meta[META_DATE] = datetime.datetime.fromtimestamp(
+        meta[META_DATE] = datetime.fromtimestamp(
             os.path.getmtime(path)).isoformat(' ')
 
     return meta
