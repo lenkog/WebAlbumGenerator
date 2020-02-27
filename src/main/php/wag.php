@@ -435,6 +435,9 @@ class WAG
     {
         header('Content-Type: application/json');
         header('Cache-Control: private, max-age=' . self::CACHE_MAX_AGE);
+        // bust the web server cache control if present
+        header('Expires:');
+        header('Pragma:');
         echo json_encode($thing, JSON_UNESCAPED_UNICODE);
     }
 
@@ -645,7 +648,7 @@ class WAG
     private function b2GetMediumURL($path)
     {
         $root = array_key_exists('root', $this->config['b2']) ? $this->config['b2']['root'] : '';
-        return $this->config['b2']['url'] . $root . $path;
+        return $this->config['b2']['url'] . implode('/', array_map('urlencode', explode('/', $root . $path)));
     }
 
     private function getThumbnailURL($path)
