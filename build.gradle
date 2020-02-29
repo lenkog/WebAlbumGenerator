@@ -3,9 +3,24 @@ plugins {
 }
 
 ext.packageJson = file('package.json')
+ext.testDataSrcDir = file('src/test/data')
+ext.testDir = "${buildDir}/test"
+ext.devTestDir = "${buildDir}/devTest"
+ext.dataTimestampsFile = file('src/test/meta/data_times.txt')
 
 def getNPMPackageVer() {
     return new groovy.json.JsonSlurper().parseText(packageJson.text).version
+}
+
+def copyWithTimestamps(src, dst, timestampsFile) {
+    mkdir dst
+    // for some reason Gradle copy fails for files with extended unicode symbols in the name
+    exec {
+        commandLine 'cp', '-r', src.toString() + '/.', dst
+    }
+    exec {
+        commandLine 'bash', file('src/test/scripts/reset_data_times.sh'), timestampsFile, dst
+    }
 }
 
 def injectJS(php) {
@@ -19,6 +34,13 @@ def injectAssets(php) {
         assets += '\n\'' + file.name.lastIndexOf('.').with{ it != -1 ? file.name.substring(0, it) : file.name } + '\' => \'' + file.bytes.encodeBase64() + '\','
     }
     return php.replaceFirst('\\s*// ASSETS_IN_PHP', assets)
+}
+
+clean.doFirst {
+    // for some reason Gradle delete fails for files with extended unicode symbols in the name
+    exec {
+        commandLine 'rm', '-rf', buildDir
+    }
 }
 
 task updateNPMPackageVer() {
@@ -65,11 +87,33 @@ task assemblePHP(dependsOn: runWebpack) {
 
 assemble.dependsOn assemblePHP
 
-check.dependsOn assemble
-check.doLast {
-    copy {
-        from file('test')
-        into buildDir
+task prepareTest(dependsOn: assemble) {
+    doLast {
+        // for some reason Gradle delete fails for files with extended unicode symbols in the name
+        exec {
+            commandLine 'rm', '-rf', testDir
+        }
+        copyWithTimestamps(testDataSrcDir, testDir, dataTimestampsFile)
+        copy {
+            from "${buildDir}/wag.php"
+            into testDir
+        }
+    }
+}
+
+check.dependsOn prepareTest
+
+task setupDevTest() {
+    doLast {
+        copyWithTimestamps(testDataSrcDir, devTestDir, dataTimestampsFile)
+        copy {
+            from file('test')
+            into devTestDir
+        }
+        copy {
+            from "${devTestDir}/index.html"
+            into buildDir
+        }
     }
 }
 
@@ -77,10 +121,9 @@ task regenerateTestPHP() {
     doLast {
         copy {
             from "${projectDir}/src/main/php/wag.php"
-            into buildDir
-            rename '.*', 'test.php'
+            into devTestDir
         }
-        def testPHP = file("${buildDir}/test.php")
+        def testPHP = file("${devTestDir}/wag.php")
         testPHP.text = '<?php\nheader("Access-Control-Allow-Origin: *");\nputenv("WAG_API_SERVER=http://localhost:3000");\n//' + injectAssets(testPHP.text)
     }
 }
