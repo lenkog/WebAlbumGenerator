@@ -1,0 +1,45 @@
+{
+    "caption": "test",
+    "items": {
+        "0d5b1c4c7f720f698946c7f6ab08f687": {
+            "caption": "circles",
+            "date": "2020-02-28 10:00:00"
+        },
+        "2ac737d240fc746cef37129b7569f08e": {
+            "caption": "extensions",
+            "date": "2020-02-28 11:09:00"
+        },
+        "3e48cfee9fcc02204bbd21e97e22e03e": {
+            "caption": "VideoGrouping",
+            "date": "2020-03-01 11:14:00"
+        },
+        "51dfa2f6d2fa06b024a808cc7979f6f8": {
+            "caption": "corner cases",
+            "date": "2020-02-28 10:00:00"
+        },
+        "7245a34874862a3ba78bd06b8f581c49": {
+            "caption": "0-subalbums",
+            "date": "2020-02-28 09:00:00"
+        },
+        "8cd283d8b7bacc277f2bae5e26ce6d1e": {
+            "caption": "many",
+            "date": "2020-02-28 11:01:39"
+        },
+        "9beff76ffcd560c37eaeab3afdca724f": {
+            "caption": "exif",
+            "date": "2020-02-28 10:11:00"
+        },
+        "c20dce960c66ab07220cce2c24172d82": {
+            "caption": "2-subalbums",
+            "date": "2020-02-28 09:22:00"
+        },
+        "c5dca4a301368008c7f9bdd49198d668": {
+            "caption": "1-subalbums",
+            "date": "2020-02-28 09:10:00"
+        },
+        "f2ab5fb218da8b84623f45579aa4ba11": {
+            "caption": "sources",
+            "date": "2020-02-28 20:20:00"
+        }
+    }
+}

@@ -1,0 +1,37 @@
+{
+    "caption": "VideoGrouping",
+    "items": {
+        "1c362e108a3d20430fee2d6282c761ca": {
+            "caption": "video 4",
+            "date": "2020-03-01 11:14:00"
+        },
+        "1f066de391cac4c70d09825a2ba01e43": {
+            "caption": "video 4",
+            "date": "2020-03-01 11:14:00"
+        },
+        "2a31f934aa48ca7c4fe8121d7f295168": {
+            "caption": "v1.mp4",
+            "date": "2020-02-28 11:11:00"
+        },
+        "5b2cc6da444974d424077f68edc58f1c": {
+            "caption": "v2.mp4",
+            "date": "2020-02-28 11:12:00"
+        },
+        "6cf8aea68381ed11461adf366be4e31f": {
+            "caption": "v3.gif",
+            "date": "2020-02-28 11:13:00"
+        },
+        "773533a9e06c7655eb4464d1730027e1": {
+            "caption": "v3.gif",
+            "date": "2020-02-28 11:13:00"
+        },
+        "8ba9c032ffe4070b4ab29b00934f3c2e": {
+            "caption": "v2.webm",
+            "date": "2020-02-28 11:12:00"
+        },
+        "a924dc9f8a4d7494a856ebb7b7dd86c1": {
+            "caption": "video 4",
+            "date": "2020-03-01 11:14:00"
+        }
+    }
+}

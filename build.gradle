@@ -67,6 +67,7 @@ task runWebpack() {
             throw new GradleException('The version in package.json does not match the version of the Gradle build.')
         }
         exec {
+            environment NODE_ENV: 'production'
             workingDir projectDir
             commandLine 'npm', 'run', 'build'
         }
@@ -101,7 +102,18 @@ task prepareTest(dependsOn: assemble) {
     }
 }
 
-check.dependsOn prepareTest
+task testMetaGen(dependsOn: prepareTest) {
+    doLast {
+        exec {
+            commandLine 'python3', file('src/main/python/wagmetagen.py'), testDir
+        }
+        exec {
+            commandLine 'python3', file('src/test/python/assert_same_meta.py'), file('src/test/meta/expected'), file("${testDir}/.wag")
+        }
+    }
+}
+
+check.dependsOn testMetaGen
 
 task setupDevTest() {
     doLast {
@@ -117,7 +129,15 @@ task setupDevTest() {
     }
 }
 
-task regenerateTestPHP() {
+task regenTestMeta() {
+    doLast {
+        exec {
+            commandLine 'python3', file('src/main/python/wagmetagen.py'), devTestDir
+        }
+    }
+}
+
+task regenTestPHP() {
     doLast {
         copy {
             from "${projectDir}/src/main/php/wag.php"

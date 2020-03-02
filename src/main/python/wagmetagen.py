@@ -69,15 +69,16 @@ def isvideo(path):
 def process(path):
     global totalItems
 
+    totalItems += 1
+    processAlbum(path)
+
     items = getItems(path)
-    totalItems += len(items[ALBUM])
     totalItems += len(items[IMAGE])
     totalItems += sum(map(lambda x: len(x[VIDEO]), items[VIDEO]))
     totalItems += len(list(
         filter(lambda x: x[IMAGE] is not None, items[VIDEO])
     ))
-    for album in items[ALBUM]:
-        processAlbum(album)
+
     for image in items[IMAGE]:
         processImage(image)
     for video in items[VIDEO]:
@@ -127,11 +128,11 @@ def processAlbum(path):
     pinkyNails = []
     if len(items[ALBUM]) > 0:
         pinkyNails.append(makeThumbnail(SUBALBUM_PINKYNAIL, PINKYNAIL_SIZE))
-    for image in items[IMAGE]:
+    for image in sorted(items[IMAGE]):
         if len(pinkyNails) > 3:
             break
         pinkyNails.append(makeThumbnail(imageio.imread(image), PINKYNAIL_SIZE))
-    for video in items[VIDEO]:
+    for video in sorted(items[VIDEO], key=lambda video: sorted(video[VIDEO])[0]):
         if len(pinkyNails) > 3:
             break
         if video[IMAGE]:
@@ -228,6 +229,9 @@ def makeThumbnail(image, size):
     image = cv2.copyMakeBorder(image, math.floor(dh / 2), math.ceil(dh / 2),
                                math.floor(dw / 2), math.ceil(dw / 2),
                                cv2.BORDER_CONSTANT, value=WHITE)
+    # make sure we produce an RGB image
+    if len(image.shape) < 3 or image.shape[2] < 3:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     return image
 
 
@@ -317,6 +321,9 @@ def extractImageMeta(path, image):
         if entry is not None:
             meta[META_DATE] = datetime.strptime(
                 entry, '%Y:%m:%d %H:%M:%S').isoformat(' ')
+        entry = exif.get('ImageDescription', None)
+        if entry is not None and not (META_CAPTION in meta) and len(entry.strip()) > 0:
+            meta[META_CAPTION] = entry
         entry = exif.get('Copyright', None)
         if entry is not None and not (META_COPYRIGHT in meta) and len(entry.strip()) > 0:
             meta[META_COPYRIGHT] = entry
@@ -405,7 +412,7 @@ def outputMeta(meta, path):
     if not os.path.exists(dst):
         os.makedirs(dst)
     with open(os.path.join(dst, METADATA_FILE), 'w', encoding='utf-8') as metaFile:
-        json.dump(meta, metaFile, ensure_ascii=False, indent=4)
+        json.dump(meta, metaFile, ensure_ascii=False, indent=4, sort_keys=True)
 
 
 def outputThumbnail(image, path):
@@ -425,6 +432,8 @@ def getMetaId(path):
     global processingBase
 
     relPath = os.path.relpath(path, processingBase)
+    if relPath == '.':
+        relPath = ''
     return hashlib.md5(relPath.encode('utf-8')).hexdigest()
 
 

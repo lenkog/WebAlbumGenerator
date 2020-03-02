@@ -1,0 +1,53 @@
+{
+    "caption": "exif",
+    "items": {
+        "091102f7cf5d01e6c2bded315e9a09d1": {
+            "caption": "5-artist-exif.jpg",
+            "date": "2020-02-28 10:05:00"
+        },
+        "19995bd5e9736037122eb4bb6884fc15": {
+            "caption": "4-c-exif.jpg",
+            "date": "2020-02-28 10:04:00"
+        },
+        "2783eec1f4d93ed50ca141f36c1048d3": {
+            "caption": "9 IPTC",
+            "date": "2020-02-28 10:09:00"
+        },
+        "4c6d85461754e2e46b0fcc4448d6981b": {
+            "caption": "b IPTC",
+            "date": "2020-02-28 10:11:00"
+        },
+        "555c148c92215558e4330d3987eac5d1": {
+            "caption": "8-all",
+            "date": "2020-02-28 10:08:00"
+        },
+        "8e7cc6361313b1cff1ab6d4e6d772c8b": {
+            "caption": "3-c-iptc.jpg",
+            "date": "2020-02-28 10:03:00"
+        },
+        "a8095cb79b59a5cdaad7908b58d32d82": {
+            "caption": "a exif",
+            "date": "2020-02-28 10:10:00"
+        },
+        "b40285ac3f6a6c04a65b6f4b538c734f": {
+            "caption": "7-c-artist-exif.jpg",
+            "date": "2020-02-28 10:07:00"
+        },
+        "c34ed78975f4ce61e0ddbc969b89de87": {
+            "caption": "zero",
+            "date": "2000-02-28 10:00:00"
+        },
+        "dcf9ac65e6cd533e39cd2f62667efd58": {
+            "caption": "2-tn.jpg",
+            "date": "2020-02-28 10:02:00"
+        },
+        "e73411ff99eb3a7a4b3b5949045394a4": {
+            "caption": "1-no-meta.jpg",
+            "date": "2020-02-28 10:01:00"
+        },
+        "f760eb43a6a439f09f7dc8cbcc21824f": {
+            "caption": "6-c-iptc-exif.jpg",
+            "date": "2020-02-28 10:06:00"
+        }
+    }
+}

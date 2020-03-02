@@ -101,11 +101,16 @@
 2002281101.19 many/image079.gif
 2002281101.26 many/image086.gif
 2002281003.00 corner cases
+2002281000.00 corner cases/Албум-像片簿-ألبوم الصور-📷
+2002281000.00 corner cases/Албум-像片簿-ألبوم الصور-📷/Албум-像片簿-ألبوم الصور-📷.png
+2002281000.00 corner cases/pixel
+2002281000.00 corner cases/pixel/pixel.png
 2002281000.00 corner cases/EXIF_Orientation 90.jpg
 2002281000.00 corner cases/EXIF_ExposureTime 0.jpg
 2002281000.00 corner cases/EXIF_Orientation 0.jpg
-2002281000.00 corner cases/Албум,像片簿,ألبوم الصور,📷; ('02+20').jpg
-2002281000.00 corner cases/Албум,像片簿,ألبوم الصور,📷; ('02+20').jpg/Албум,像片簿,ألبوم الصور,📷; ('02+20').jpg
+2002281000.00 corner cases/# '^=@&_(.)-[,]+{;}$
+2002281000.00 corner cases/# '^=@&_(.)-[,]+{;}$/# '^=@&_(.)-[,]+{;}$.png
+2002281000.00 corner cases/pixel.jpg
 2002281005.00 extensions
 2002281100.00 extensions/image
 2002281106.00 extensions/image/6.JPG
