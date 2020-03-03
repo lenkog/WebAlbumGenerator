@@ -51,10 +51,16 @@ export function getAvailableArea(element: Element): Dim2D {
     };
 }
 
-function assembleOptionalPaths(paths: string[]): string {
-    let result = '';
-    paths.forEach(path => {
-        result += (path || path.length > 0 ? path + '/' : '');
-    });
-    return result;
+export function urlencodeSegments(path: string) {
+    if (typeof path === 'undefined') {
+        return undefined;
+    }
+    return path.split('/').map(encodeURIComponent).join('/');
+}
+
+export function urldecodeSegments(path: string) {
+    if (typeof path === 'undefined') {
+        return undefined;
+    }
+    return path.split('/').map(decodeURIComponent).join('/');
 }

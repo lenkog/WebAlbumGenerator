@@ -642,13 +642,13 @@ class WAG
 
     private function localGetMediumURL($path)
     {
-        return self::getFullURL($this->getScriptURLPath() . self::API_PATH . '/media/' . $path);
+        return self::getFullURL($this->getScriptURLPath() . self::API_PATH . '/media/' . self::urlencodeSegments($path));
     }
 
     private function b2GetMediumURL($path)
     {
         $root = array_key_exists('root', $this->config['b2']) ? $this->config['b2']['root'] : '';
-        return $this->config['b2']['url'] . implode('/', array_map('urlencode', explode('/', $root . $path)));
+        return $this->config['b2']['url'] . self::urlencodeSegments($root . $path);
     }
 
     private function getThumbnailURL($path)
@@ -665,7 +665,7 @@ class WAG
 
     private function localGetThumbnailURL($path)
     {
-        return self::getFullURL($this->getScriptURLPath() . self::API_PATH . '/thumbnails/' . $path);
+        return self::getFullURL($this->getScriptURLPath() . self::API_PATH . '/thumbnails/' . self::urlencodeSegments($path));
     }
 
     private function b2GetThumbnailURL($path)
@@ -682,6 +682,11 @@ class WAG
     private static function getMetaId($path)
     {
         return md5($path);
+    }
+
+    private static function urlencodeSegments($url)
+    {
+        return implode('/', array_map('urlencode', explode('/', $url)));
     }
 
     private function b2Authorize()

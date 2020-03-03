@@ -16,7 +16,7 @@ import VideoView from './VideoView.vue';
 import { getAlbum, getItem } from './service';
 import { PATHS, ROOT_CAPTION } from './constants';
 import { Route } from 'vue-router';
-import { trailingPath } from './utils';
+import { trailingPath, urldecodeSegments } from './utils';
 import { Item, ItemType, Dim2D, ViewReadyInfo } from './models';
 import { Prop } from 'vue-property-decorator';
 
@@ -45,7 +45,7 @@ export default class ItemView extends Vue {
 
     mounted() {
         this.model = null;
-        this.path = this.$route.params.path;
+        this.path = urldecodeSegments(this.$route.params.path);
         if (typeof this.path === 'undefined') {
             this.path = '';
         }
@@ -65,7 +65,7 @@ export default class ItemView extends Vue {
     beforeRouteUpdate(to: Route, from: Route, next: Function) {
         try {
             this.model = null;
-            this.path = trailingPath(PATHS.ITEM, to.path);
+            this.path = trailingPath(PATHS.ITEM, urldecodeSegments(to.path));
             this.cancelPendingRequest = getItem(
                 this.path,
                 this.onLoaded,

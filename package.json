@@ -26,6 +26,6 @@
     "axios": "^0.19.2",
     "vue": "^2.6.11",
     "vue-property-decorator": "^8.4.0",
-    "vue-router": "^3.1.5"
+    "vue-router": "^3.1.6"
   }
 }

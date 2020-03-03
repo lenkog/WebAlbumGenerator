@@ -18,7 +18,7 @@ import { Slab, Album, ItemType, ViewReadyInfo } from './models';
 import SlabView from './SlabView.vue';
 import ItemHeaderView from './ItemHeaderView.vue';
 import { getAssetURL, ASSETS, getAlbum } from './service';
-import { trailingPath } from './utils';
+import { trailingPath, urldecodeSegments, urlencodeSegments } from './utils';
 
 @Component({
     components: {
@@ -37,7 +37,7 @@ export default class AlbumView extends Vue {
         this.model = null;
         this.albums = [];
         this.media = [];
-        this.path = this.$route.params.path;
+        this.path = urldecodeSegments(this.$route.params.path);
         if (typeof this.path === 'undefined') {
             this.path = '';
         }
@@ -61,7 +61,7 @@ export default class AlbumView extends Vue {
                 new Slab(
                     info.type,
                     info.caption,
-                    PATHS.ALBUM + '/' + info.path,
+                    urlencodeSegments(PATHS.ALBUM + '/' + info.path),
                     info.thumbnail,
                     getAssetURL(ASSETS.OVERLAY_ALBUM)
                 )
@@ -72,7 +72,7 @@ export default class AlbumView extends Vue {
                 new Slab(
                     info.type,
                     info.caption,
-                    PATHS.ITEM + '/' + info.path,
+                    urlencodeSegments(PATHS.ITEM + '/' + info.path),
                     info.thumbnail,
                     info.type === ItemType.VIDEO
                         ? getAssetURL(ASSETS.OVERLAY_VIDEO)
@@ -88,7 +88,7 @@ export default class AlbumView extends Vue {
             this.model = null;
             this.albums = [];
             this.media = [];
-            this.path = trailingPath(PATHS.ALBUM, to.path);
+            this.path = trailingPath(PATHS.ALBUM, urldecodeSegments(to.path));
             this.cancelPendingRequest = getAlbum(
                 this.path,
                 this.onLoaded,

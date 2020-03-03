@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Item, Album } from './models';
+import { urlencodeSegments } from './utils';
 
 declare const API_ENDPOINT: string;
 
@@ -42,7 +43,7 @@ export function getAlbum(path: string, onSuccess: (model: Album) => void, onErro
     let requestOptions = {
         cancelToken: new axios.CancelToken((c) => requestCanceller = c)
     };
-    axios.get(API_ENDPOINT + RESOURCES.ALBUMS + '/' + path, requestOptions).then(
+    axios.get(API_ENDPOINT + RESOURCES.ALBUMS + '/' + urlencodeSegments(path), requestOptions).then(
         (response) => onSuccess(<Album>response.data),
         (error) => processError(error, onError),
     );
@@ -57,7 +58,7 @@ export function getItem(path: string, onSuccess: (model: Item) => void, onError:
     let requestOptions = {
         cancelToken: new axios.CancelToken((c) => requestCanceller = c)
     };
-    axios.get(API_ENDPOINT + RESOURCES.ITEMS + '/' + path, requestOptions).then(
+    axios.get(API_ENDPOINT + RESOURCES.ITEMS + '/' + urlencodeSegments(path), requestOptions).then(
         (response) => onSuccess(<Item>response.data),
         (error) => processError(error, onError),
     );

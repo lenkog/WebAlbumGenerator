@@ -27,7 +27,7 @@ Component.registerHooks([
 import Vue from 'vue';
 import { Route } from 'vue-router';
 import { PATHS, ROOT_CAPTION, WAG_CONTAINER_ID } from './constants';
-import { trailingPath } from './utils';
+import { trailingPath, urldecodeSegments } from './utils';
 import { Breadcrumb, Dim2D, ViewReadyInfo } from './models';
 import { Prop } from 'vue-property-decorator';
 
@@ -76,7 +76,7 @@ export default class WAG extends Vue {
         for (let i = 0; i < sections.length; ++i) {
             this.breadcrumbs.push(
                 new Breadcrumb(
-                    sections[i],
+                    urldecodeSegments(sections[i]),
                     PATHS.ALBUM + '/' + sections.slice(0, i + 1).join('/')
                 )
             );
