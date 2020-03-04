@@ -10,6 +10,7 @@ import WAG from './WAG.vue';
 import AlbumView from './AlbumView.vue';
 import ItemView from './ItemView.vue';
 import { ViewReadyInfo } from './models';
+import { VLazyImagePlugin } from 'v-lazy-image';
 
 window.onload = function () {
     let pendingScroll: {
@@ -26,6 +27,8 @@ window.onload = function () {
     };
 
     Vue.use(VueRouter);
+    Vue.use(VLazyImagePlugin);
+
     const routes = [
         { path: '/', redirect: PATHS.ALBUM + '/' },
         { path: PATHS.ALBUM + '/:path*', component: AlbumView },

@@ -2,7 +2,7 @@
     <span>
         <div class="wagSlab">
             <router-link :to="model.path" class="wagLink wagSlabLink">
-                <img
+                <v-lazy-image
                     :src="model.thumbnailURL"
                     :title="model.caption"
                     :alt="model.caption"
