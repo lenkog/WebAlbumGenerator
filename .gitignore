@@ -2,6 +2,7 @@
 /.gradle
 /node_modules
 /build
+/gradlew
 
 /releases
 /test

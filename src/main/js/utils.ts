@@ -1,5 +1,72 @@
-import { Dim2D } from "./models";
-import { WAG_CONTAINER_ID } from "./constants";
+import md5 from 'blueimp-md5';
+import { METADATA_FILE, THUMBNAIL_FILE, WAG_CONTAINER_ID, WAG_DIR } from "./constants";
+import { Dim2D, ItemType } from "./models";
+
+const IMAGE_EXT: Map<string, string> = new Map([
+    ['jpg', 'image/jpeg'],
+    ['png', 'image/png'],
+    ['jpeg', 'image/jpeg'],
+    ['gif', 'image/gif'],
+]);
+
+const VIDEO_EXT: Map<string, string> = new Map([
+    ['webm', 'video/webm'],
+    ['mp4', 'video/mp4'],
+    ['mpeg4', 'video/mp4'],
+    ['m4v', 'video/mp4'],
+]);
+
+export function dirname(path: string) {
+    return path.split('/').slice(0, -1).join('/');
+}
+
+export function basename(path: string) {
+    return path.split('/').pop();
+}
+
+export function filename(path: string) {
+    if (path === '..') {
+        return '';
+    }
+    let parts = basename(path).split('.');
+    return parts.length == 1 ? parts[0] : parts.slice(0, -1).join('.');
+}
+
+export function extname(path: string) {
+    let parts = basename(path).split('.');
+    return parts.length == 1 ? '' : parts.pop();
+}
+
+export function guessMediaType(path: string) {
+    let ext = extname(path).toLowerCase();
+    if (IMAGE_EXT.has(ext)) {
+        return ItemType.IMAGE;
+    } else if (VIDEO_EXT.has(ext)) {
+        return ItemType.VIDEO;
+    } else {
+        return null;
+    }
+}
+
+export function videoMIME(path: string) {
+    return VIDEO_EXT.get(extname(path).toLowerCase());
+}
+
+export function getMetaId(path: string) {
+    return md5(path);
+}
+
+export function getThumbnailURL(prefix: string, path: string) {
+    return prefix + urlencodeSegments(WAG_DIR + '/' + getMetaId(path) + '/' + THUMBNAIL_FILE);
+}
+
+export function getMetaURL(prefix: string, path: string) {
+    return prefix + urlencodeSegments(WAG_DIR + '/' + getMetaId(path) + '/' + METADATA_FILE);
+}
+
+export function getMediaURL(prefix: string, path: string) {
+    return prefix + urlencodeSegments(path);
+}
 
 export function trailingPath(prefix: string, fullPath: string): string {
     if (

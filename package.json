@@ -23,7 +23,9 @@
     "webpack-dev-server": "^3.10.3"
   },
   "dependencies": {
+    "@types/blueimp-md5": "^2.7.0",
     "axios": "^0.19.2",
+    "blueimp-md5": "^2.12.0",
     "v-lazy-image": "^1.4.0",
     "vue": "^2.6.11",
     "vue-property-decorator": "^8.4.0",

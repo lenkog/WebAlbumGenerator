@@ -13,7 +13,7 @@ import Vue from 'vue';
 import ItemHeaderView from './ItemHeaderView.vue';
 import ImageView from './ImageView.vue';
 import VideoView from './VideoView.vue';
-import { getAlbum, getItem } from './service';
+import { getItem } from './wag';
 import { PATHS, ROOT_CAPTION } from './constants';
 import { Route } from 'vue-router';
 import { trailingPath, urldecodeSegments } from './utils';

@@ -47,14 +47,13 @@ if (!extension_loaded('curl') || !extension_loaded('intl')) {
     throw new Exception('PHP extensions "curl" and "intl" are required.');
 }
 
-abstract class ItemType
+abstract class ListingEntryType
 {
     const ALBUM = 'album';
-    const IMAGE = 'image';
-    const VIDEO = 'video';
+    const MEDIUM = 'medium';
 }
 
-class PathEntry
+class ListingEntry
 {
     public $type;
     public $path;
@@ -63,432 +62,35 @@ class PathEntry
         $this->type = $type;
         $this->path = $path;
     }
-    public function isAlbum()
+}
+
+class AlbumListing
+{
+    public $mediaURL;
+    public $entries = [];
+    function __construct($mediaURL)
     {
-        return $this->type == ItemType::ALBUM;
-    }
-    public function isImage()
-    {
-        return $this->type == ItemType::IMAGE;
-    }
-    public function isVideo()
-    {
-        return $this->type == ItemType::VIDEO;
+        $this->mediaURL = $mediaURL;
     }
 }
 
-class Item
+interface Gallery
 {
-    public $type;
-    public $caption;
-    function __construct($type, $caption)
-    {
-        $this->type = $type;
-        $this->caption = $caption;
-    }
+    public function getMediaURL();
+    public function getSafePath($pathSegments);
+    public function list($pathSegments);
 }
 
-class AlbumEntry
+class LocalGallery implements Gallery
 {
-    public $type;
-    public $caption;
-    public $path;
-    public $thumbnail;
-    function __construct($type, $caption, $path, $thumbnail)
+    public function getMediaURL()
     {
-        $this->type = $type;
-        $this->caption = $caption;
-        $this->path = $path;
-        $this->thumbnail = $thumbnail;
-    }
-}
-
-class Album extends Item
-{
-    public $albums = [];
-    public $media = [];
-
-    function __construct($caption)
-    {
-        parent::__construct(ItemType::ALBUM, $caption);
-    }
-}
-
-class Image extends Item
-{
-    public $url;
-
-    function __construct($caption, $url)
-    {
-        parent::__construct(ItemType::IMAGE, $caption);
-        $this->url = $url;
-    }
-}
-
-class VideoGroup
-{
-    public $videos = [];
-    public $poster = null;
-}
-
-class VideoEntry
-{
-    public $url;
-    public $mimeType = null;
-    function __construct($url)
-    {
-        $this->url = $url;
-    }
-}
-
-class Video extends Item
-{
-    public $alternatives = [];
-    public $posterURL = null;
-
-    function __construct($caption)
-    {
-        parent::__construct(ItemType::VIDEO, $caption);
-    }
-}
-
-class WAG
-{
-    const CONFIG_FILE = 'wag.config.json';
-    const CONFIG_LOCAL = 'local';
-    const APP_PATH = '/app.js';
-    const API_PATH = '/api';
-
-    const IMAGE_EXT = array(
-        'jpg' => 'image/jpeg',
-        'png' => 'image/png',
-        'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif'
-    );
-    const VIDEO_EXT = array(
-        'webm' => 'video/webm',
-        'mp4' => 'video/mp4',
-        'mpeg4' => 'video/mp4',
-        'm4v' => 'video/mp4'
-    );
-    const CACHE_MAX_AGE = 3600;
-    const WAG_DIR = '.wag';
-    const METADATA_FILE = 'meta.json';
-    const THUMBNAIL_FILE = 'tn.jpg';
-    const ASSET_DEFAULT_THUMBNAIL = 'default-thumbnail';
-    const META_ITEMS = 'items';
-    const META_CAPTION = 'caption';
-    const META_COPYRIGHT = 'copyright';
-    const META_DATE = 'date';
-    const META_WIDTH = 'width';
-    const META_HEIGHT = 'height';
-    const META_LAT = 'lat';
-    const META_LON = 'lon';
-    const META_SHUTTER = 'shutter';
-    const META_APERTURE = 'aperture';
-    const META_ISO = 'iso';
-    const META_ZOOM = 'zoom';
-
-    private $config;
-    private $configType = self::CONFIG_LOCAL;
-    private $method;
-    private $pathSegments;
-    private $query = '';
-
-    public function run()
-    {
-        if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] === '/') {
-            $this->serveHTML();
-            return;
-        }
-        if ($_SERVER['PATH_INFO'] === self::APP_PATH) {
-            $this->serveScript();
-            return;
-        }
-        if (is_file(self::CONFIG_FILE)) {
-            $this->config = json_decode(self::localGetContent(self::CONFIG_FILE), true);
-            if (array_key_exists('b2', $this->config)) {
-                $this->configType = 'b2';
-            }
-        }
-        $pathInfo = urldecode(substr($_SERVER['REQUEST_URI'], strlen($this->getScriptURLPath())));
-        if (!self::isAPICall($pathInfo)) {
-            throw new Exception('Invalid request path');
-        }
-        $this->method = $_SERVER['REQUEST_METHOD'];
-        $this->pathSegments = explode('/', substr($pathInfo, strlen(self::API_PATH) + 1));
-        if (!empty($_SERVER['QUERY_STRING'])) {
-            parse_str($_SERVER['QUERY_STRING'], $this->query);
-        }
-        if (count($this->pathSegments) < 1) {
-            throw new Exception('Invalid API path');
-        }
-        $handler = array_shift($this->pathSegments) . $this->method;
-        if (!method_exists($this, $handler) || !((new ReflectionMethod($this, $handler))->isPublic())) {
-            throw new Exception('Invalid API path');
-        }
-        call_user_func(array($this, $handler));
+        return WAG::getFullURL(WAG::getScriptURLPath() . WAG::API_PATH . '/media/');
     }
 
-    private static function isAPICall($path)
+    public function getSafePath($pathSegments)
     {
-        $apiPathLen = strlen(self::API_PATH);
-        return !empty($path) && strlen($path) > $apiPathLen && substr($path, 0, $apiPathLen) === self::API_PATH && $path[$apiPathLen] === '/';
-    }
-
-    private function getScriptURLPath()
-    {
-        $pathInfoLen = empty($_SERVER['PATH_INFO']) ? 0 : strlen($_SERVER['PATH_INFO']);
-        $phpSelfLen = strlen($_SERVER['PHP_SELF']);
-        return ($phpSelfLen > $pathInfoLen ? substr($_SERVER['PHP_SELF'], 0, $phpSelfLen - $pathInfoLen) : $_SERVER['PHP_SELF']);
-    }
-
-    private static function getFullURL($path)
-    {
-        $server = getenv('WAG_API_SERVER', true);
-        if ($server === false) {
-            $server = '';
-        }
-        return $server . $path;
-    }
-
-    public function albumsGET()
-    {
-        $safePath = $this->getSafePathFromSegments($this->pathSegments);
-        $itemsMeta = array();
-        $albumCaption = basename($safePath);
-        $metaFile = $this->getContent(self::getMetaDir($safePath) . '/' . self::METADATA_FILE);
-        if ($metaFile != null) {
-            $meta = json_decode($metaFile, true);
-            if (array_key_exists(self::META_CAPTION, $meta)) {
-                $albumCaption = $meta[self::META_CAPTION];
-            }
-            if (array_key_exists(self::META_ITEMS, $meta)) {
-                $itemsMeta = $meta[self::META_ITEMS];
-            }
-        }
-        $album = new Album($albumCaption);
-        $groups = [];
-        foreach ($this->listDir($safePath) as $entry) {
-            $key = pathinfo($entry->path, PATHINFO_FILENAME);
-            if (!isset($groups[$key])) {
-                $groups[$key] = array(ItemType::ALBUM => [], ItemType::IMAGE => [], ItemType::VIDEO => []);
-            }
-            array_push($groups[$key][$entry->type], $entry->path);
-        }
-        foreach ($groups as $group) {
-            foreach ($group[ItemType::ALBUM] as $entry) {
-                $itemId = self::getMetaId($entry);
-                $caption = array_key_exists($itemId, $itemsMeta) && array_key_exists(self::META_CAPTION, $itemsMeta[$itemId]) ?
-                    $itemsMeta[$itemId][self::META_CAPTION] : basename($entry);
-                array_push($album->albums, new AlbumEntry(ItemType::ALBUM, $caption, $entry, $this->getThumbnailURL($entry)));
-            }
-            if (count($group[ItemType::VIDEO]) > 0) {
-                $videoGroup = new VideoGroup();
-                $videoGroup->videos = $group[ItemType::VIDEO];
-                if (count($group[ItemType::IMAGE]) > 0) {
-                    $videoGroup->poster = reset($group[ItemType::IMAGE]);
-                }
-                $entry = reset($group[ItemType::VIDEO]);
-                $itemId = self::getMetaId($entry);
-                $caption = array_key_exists($itemId, $itemsMeta) && array_key_exists(self::META_CAPTION, $itemsMeta[$itemId]) ?
-                    $itemsMeta[$itemId][self::META_CAPTION] : basename($entry);
-                array_push($album->media, new AlbumEntry(ItemType::VIDEO, $caption, $entry, $this->getThumbnailURL($entry)));
-            } else {
-                foreach ($group[ItemType::IMAGE] as $entry) {
-                    $itemId = self::getMetaId($entry);
-                    $caption = array_key_exists($itemId, $itemsMeta) && array_key_exists(self::META_CAPTION, $itemsMeta[$itemId]) ?
-                        $itemsMeta[$itemId][self::META_CAPTION] : basename($entry);
-                    array_push($album->media, new AlbumEntry(ItemType::IMAGE, $caption, $entry, $this->getThumbnailURL($entry)));
-                }
-            }
-        }
-        self::outputResponse($album);
-    }
-
-    public function itemsGET()
-    {
-        $safePath = $this->getSafePathFromSegments($this->pathSegments);
-        $type = self::guessMediaType($safePath);
-        if ($type === ItemType::IMAGE) {
-            $this->respondImage($safePath);
-        } elseif ($type === ItemType::VIDEO) {
-            $this->respondVideo($safePath);
-        } else {
-            throw new Exception('Item not found.');
-        }
-    }
-
-    private function respondImage($safePath)
-    {
-        $image = new Image($this->getItemCaption($safePath), $this->getMediumURL($safePath));
-        self::outputResponse($image);
-    }
-
-    private function respondVideo($safePath)
-    {
-        $videoGroup = $this->getVideoGroup($safePath);
-        $video = new Video($this->getVideoCaption($videoGroup));
-        foreach ($videoGroup->videos as $path) {
-            $entry = new VideoEntry($this->getMediumURL($path));
-            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-            $entry->mimeType = self::VIDEO_EXT[$ext];
-            array_push($video->alternatives, $entry);
-        }
-        if ($videoGroup->poster != null) {
-            $video->posterURL =  $this->getMediumURL($videoGroup->poster);
-        }
-        self::outputResponse($video);
-    }
-
-    public function mediaGET()
-    {
-        if ($this->configType !== self::CONFIG_LOCAL) {
-            throw new Exception('Not configured for serving media.');
-        }
-        $safePath = $this->getSafePathFromSegments($this->pathSegments);
-        $ext = strtolower(pathinfo($safePath, PATHINFO_EXTENSION));
-        switch (self::guessMediaType($safePath)) {
-            case ItemType::IMAGE:
-                header('Content-Type: ' . self::IMAGE_EXT[$ext]);
-                break;
-            case ItemType::VIDEO:
-                header('Content-Type: ' . self::VIDEO_EXT[$ext]);
-                break;
-            default:
-                throw new Exception('Unrecognized media type.');
-        }
-        header('Cache-Control: max-age=' . self::CACHE_MAX_AGE);
-        self::localServeFile($safePath);
-    }
-
-    public function thumbnailsGET()
-    {
-        if ($this->configType !== self::CONFIG_LOCAL) {
-            throw new Exception('Not configured for serving media.');
-        }
-        $safePath = $this->getSafePathFromSegments($this->pathSegments);
-        $thumbnail = self::getMetaDir($safePath) . '/' . self::THUMBNAIL_FILE;
-        if (!is_file(realpath($thumbnail))) {
-            $this->pathSegments = array(self::ASSET_DEFAULT_THUMBNAIL);
-            $this->assetsGET();
-            return;
-        }
-        header('Content-Type: ' . self::IMAGE_EXT['jpg']);
-        header('Cache-Control: max-age=' . self::CACHE_MAX_AGE);
-        self::localServeFile($thumbnail);
-    }
-
-    public function assetsGET()
-    {
-        $asset = self::Assets[$this->pathSegments[0]];
-        if (!$asset) {
-            throw new Exception('Invalid asset');
-        }
-        header('Content-Type: ' . self::IMAGE_EXT['gif']);
-        header('Cache-Control: max-age=' . self::CACHE_MAX_AGE);
-        echo (base64_decode($asset));
-    }
-
-    private static function localServeFile($path)
-    {
-        $file = fopen(realpath($path), 'rb');
-        fpassthru($file);
-        fclose($file);
-    }
-
-    private static function guessMediaType($path)
-    {
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (array_key_exists($ext, self::IMAGE_EXT)) {
-            return ItemType::IMAGE;
-        } else if (array_key_exists($ext, self::VIDEO_EXT)) {
-            return ItemType::VIDEO;
-        } else {
-            return null;
-        }
-    }
-
-    private function getVideoGroup($safePath)
-    {
-        $videoGroup = new VideoGroup();
-        $videoName = pathinfo($safePath, PATHINFO_FILENAME);
-        foreach ($this->listDir(dirname($safePath)) as $entry) {
-            $name = pathinfo($entry->path, PATHINFO_FILENAME);
-            if ($name !== $videoName) {
-                continue;
-            }
-            if ($entry->type === ItemType::VIDEO) {
-                array_push($videoGroup->videos, $entry->path);
-            } else if ($entry->type === ItemType::IMAGE) {
-                $videoGroup->poster = $entry->path;
-            }
-        }
-        if (count($videoGroup->videos) > 0) {
-            return $videoGroup;
-        } else {
-            return null;
-        }
-    }
-
-    private static function outputResponse($thing)
-    {
-        header('Content-Type: application/json');
-        header('Cache-Control: private, max-age=' . self::CACHE_MAX_AGE);
-        // bust the web server cache control if present
-        header('Expires:');
-        header('Pragma:');
-        echo json_encode($thing, JSON_UNESCAPED_UNICODE);
-    }
-
-    private function getItemCaption($path)
-    {
-        $metaFile = $this->getContent(self::getMetaDir($path) . '/' . self::METADATA_FILE);
-        if ($metaFile != null) {
-            $meta = json_decode($metaFile, true);
-            if (array_key_exists(self::META_CAPTION, $meta)) {
-                return $meta[self::META_CAPTION];
-            }
-        }
-        return basename($path);
-    }
-
-    private function getVideoCaption($videoGroup)
-    {
-        if ($videoGroup->poster != null) {
-            return $this->getItemCaption($videoGroup->poster);
-        }
-        return $this->getItemCaption(reset($videoGroup->videos));
-    }
-
-    private function getSafePathFromSegments($pathSegments)
-    {
-        return $this->getSafePath(implode('/', $pathSegments));
-    }
-
-    private function getSafePath($path)
-    {
-        $normalPath = normalizer_normalize($path);
-        $lenNormalPath = strlen($normalPath);
-        $lenWagDir = strlen(self::WAG_DIR);
-        if (
-            $lenNormalPath >= $lenWagDir && substr($normalPath, 0, $lenWagDir) === self::WAG_DIR &&
-            ($lenNormalPath === $lenWagDir || $normalPath[$lenWagDir] === '/')
-        ) {
-            throw new Exception('Invalid resource.');
-        }
-        switch ($this->configType) {
-            case self::CONFIG_LOCAL:
-                return self::localSafePath($normalPath);
-            case 'b2':
-                return $this->b2SafePath($normalPath);
-            default:
-                throw new Exception('Unrecognized config type ' . $this->configType);
-        }
-    }
-
-    private static function localSafePath($normalPath)
-    {
+        $normalPath = normalizer_normalize(implode('/', $pathSegments));
         $localPath = realpath($normalPath);
         $localPathLen = ($localPath !== false ? strlen($localPath) : 0);
         $scriptDir = realpath(__DIR__);
@@ -502,27 +104,11 @@ class WAG
         return substr($localPath, $scriptDirLen + ($localPathLen > $scriptDirLen ? 1 : 0));
     }
 
-    private function b2SafePath($normalPath)
+    public function list($pathSegments)
     {
-        return $normalPath;
-    }
-
-    private function listDir($safePath)
-    {
-        switch ($this->configType) {
-            case self::CONFIG_LOCAL:
-                return self::localListDir($safePath);
-            case 'b2':
-                return $this->b2ListDir($safePath);
-            default:
-                throw new Exception('Unrecognized config type ' . $this->configType);
-        }
-    }
-
-    private static function localListDir($path)
-    {
+        $safePath = $this->getSafePath($pathSegments);
         $entries = [];
-        $localPath = realpath($path);
+        $localPath = realpath($safePath);
         if (!is_dir($localPath)) {
             throw new Exception('Not an album');
         }
@@ -530,40 +116,61 @@ class WAG
             if ($file === '.' || $file === '..' || $file === '.wag') {
                 continue;
             }
-            $entry = (strlen($path) > 0 ? $path . '/' : '') . $file;
+            $entry = (strlen($safePath) > 0 ? $safePath . '/' : '') . $file;
             $localEntry = $localPath . '/' . $file;
-            $type = null;
-            if (is_file($localEntry)) {
-                $type = self::guessMediaType($localEntry);
+            if (is_file($localEntry) && WAG::isMedium($localEntry)) {
+                $type = ListingEntryType::MEDIUM;
             } else if (is_dir($localEntry) && !is_file($localEntry . '/password.txt')) {
-                $type = ItemType::ALBUM;
-            }
-            if ($type === null) {
+                $type = ListingEntryType::ALBUM;
+            } else {
                 continue;
             }
-            array_push($entries, new PathEntry($type, $entry));
+            array_push($entries, new ListingEntry($type, $entry));
         }
         return $entries;
     }
+}
 
-    private function b2ListDir($path)
+class B2Gallery implements Gallery
+{
+    private $config;
+    private $root;
+    private $auth = null;
+
+    public function __construct($config)
+    {
+        $this->config = $config['b2'];
+        $this->root = array_key_exists('root', $this->config) ? $this->config['root'] : '';
+    }
+
+    public function getMediaURL()
+    {
+        return $this->config['url'] . WAG::urlencodeSegments($this->root);
+    }
+
+    public function getSafePath($pathSegments)
+    {
+        return normalizer_normalize(implode('/', $pathSegments));
+    }
+
+    public function list($pathSegments)
     {
         $this->b2Authorize();
 
-        $root = array_key_exists('root', $this->config['b2']) ? $this->config['b2']['root'] : '';
+        $path = $this->getSafePath($pathSegments);
         $lenPath = strlen($path);
-        $lenRoot = strlen($root);
-        $prefix = $root . $path . ($lenPath > 0 && $path[$lenPath - 1] != '/' ? '/' : '');
+        $lenRoot = strlen($this->root);
+        $prefix = $this->root . $path . ($lenPath > 0 && $path[$lenPath - 1] != '/' ? '/' : '');
 
         $entries = [];
 
         $startFileName = null;
         $isNotDone = true;
         while ($isNotDone) {
-            $request = array('bucketId' => $this->config['b2']['bucketId'], 'prefix' => $prefix, 'delimiter' => '/', 'startFileName' => $startFileName);
-            $session = curl_init($this->config['b2']['auth']['apiUrl'] .  '/b2api/v2/b2_list_file_names');
+            $request = array('bucketId' => $this->config['bucketId'], 'prefix' => $prefix, 'delimiter' => '/', 'startFileName' => $startFileName);
+            $session = curl_init($this->auth['apiUrl'] .  '/b2api/v2/b2_list_file_names');
             curl_setopt($session, CURLOPT_POSTFIELDS, json_encode($request, JSON_UNESCAPED_UNICODE));
-            $headers = array('Authorization: ' . $this->config['b2']['auth']['authorizationToken']);
+            $headers = array('Authorization: ' . $this->auth['authorizationToken']);
             curl_setopt($session, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($session, CURLOPT_POST, true);
             curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
@@ -582,127 +189,33 @@ class WAG
                 if (basename($entry) === '.wag') {
                     continue;
                 }
-                $type = null;
-                if ($file['action'] === 'upload') {
-                    $type = self::guessMediaType($entry);
+                if ($file['action'] === 'upload' && WAG::isMedium($entry)) {
+                    $type = ListingEntryType::MEDIUM;
                 } else if ($file['action'] === 'folder') {
-                    $type = ItemType::ALBUM;
-                }
-                if ($type === null) {
+                    $type = ListingEntryType::ALBUM;
+                } else {
                     continue;
                 }
-                array_push($entries, new PathEntry($type, $entry));
+                array_push($entries, new ListingEntry($type, $entry));
             }
         }
         return $entries;
     }
 
-    private function getContent($safePath)
-    {
-        switch ($this->configType) {
-            case self::CONFIG_LOCAL:
-                return self::localGetContent($safePath);
-            case 'b2':
-                return $this->b2GetContent($safePath);
-            default:
-                throw new Exception('Unrecognized config type ' . $this->configType);
-        }
-    }
-
-    private static function localGetContent($path)
-    {
-        if (!is_file($path)) {
-            return null;
-        }
-        return file_get_contents($path);
-    }
-
-    private function b2GetContent($path)
-    {
-        $root = array_key_exists('root', $this->config['b2']) ? $this->config['b2']['root'] : '';
-        $session = curl_init($this->config['b2']['url'] . $root . $path);
-        curl_setopt($session, CURLOPT_HTTPGET, true);
-        curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
-        $output = curl_exec($session);
-        curl_close($session);
-        return $output;
-    }
-
-    private function getMediumURL($path)
-    {
-        switch ($this->configType) {
-            case self::CONFIG_LOCAL:
-                return $this->localGetMediumURL($path);
-            case 'b2':
-                return $this->b2GetMediumURL($path);
-            default:
-                throw new Exception('Unrecognized config type ' . $this->configType);
-        }
-    }
-
-    private function localGetMediumURL($path)
-    {
-        return self::getFullURL($this->getScriptURLPath() . self::API_PATH . '/media/' . self::urlencodeSegments($path));
-    }
-
-    private function b2GetMediumURL($path)
-    {
-        $root = array_key_exists('root', $this->config['b2']) ? $this->config['b2']['root'] : '';
-        return $this->config['b2']['url'] . self::urlencodeSegments($root . $path);
-    }
-
-    private function getThumbnailURL($path)
-    {
-        switch ($this->configType) {
-            case self::CONFIG_LOCAL:
-                return $this->localGetThumbnailURL($path);
-            case 'b2':
-                return $this->b2GetThumbnailURL($path);
-            default:
-                throw new Exception('Unrecognized config type ' . $this->configType);
-        }
-    }
-
-    private function localGetThumbnailURL($path)
-    {
-        return self::getFullURL($this->getScriptURLPath() . self::API_PATH . '/thumbnails/' . self::urlencodeSegments($path));
-    }
-
-    private function b2GetThumbnailURL($path)
-    {
-        $root = array_key_exists('root', $this->config['b2']) ? $this->config['b2']['root'] : '';
-        return $this->config['b2']['url'] . $root . self::WAG_DIR . '/' . self::getMetaId($path) . '/' . self::THUMBNAIL_FILE;
-    }
-
-    private static function getMetaDir($path)
-    {
-        return self::WAG_DIR . '/' . self::getMetaId($path);
-    }
-
-    private static function getMetaId($path)
-    {
-        return md5($path);
-    }
-
-    private static function urlencodeSegments($url)
-    {
-        return implode('/', array_map('urlencode', explode('/', $url)));
-    }
-
     private function b2Authorize()
     {
-        if (array_key_exists('auth', $this->config['b2'])) {
+        if ($this->auth !== null) {
             return;
         }
         if (strlen(session_id()) < 1) {
             session_start();
         }
-        if (isset($_SESSION['time']) && abs(time() - $_SESSION['time']) < self::CACHE_MAX_AGE) {
-            $this->config['b2']['auth'] = json_decode($_SESSION['auth'], true);
+        if (isset($_SESSION['time']) && abs(time() - $_SESSION['time']) < WAG::CACHE_MAX_AGE) {
+            $this->auth = json_decode($_SESSION['auth'], true);
         } else {
             $session = curl_init('https://api.backblazeb2.com/b2api/v2/b2_authorize_account');
             // credentials = base64_encode(appkeyId . ':' . appkey);
-            $headers = array('Accept: application/json', 'Authorization: Basic ' . $this->config['b2']['cred']);
+            $headers = array('Accept: application/json', 'Authorization: Basic ' . $this->config['cred']);
             curl_setopt($session, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($session, CURLOPT_HTTPGET, true);
             curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
@@ -710,8 +223,192 @@ class WAG
             curl_close($session);
             $_SESSION['time'] = time();
             $_SESSION['auth'] = $output;
-            $this->config['b2']['auth'] = json_decode($output, true);
+            $this->auth = json_decode($output, true);
         }
+    }
+}
+
+class WAG
+{
+    const CONFIG_FILE = 'wag.config.json';
+    const APP_PATH = '/app.js';
+    const API_PATH = '/api';
+
+    const MEDIA_EXT = array(
+        'jpg' => 'image/jpeg',
+        'png' => 'image/png',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webm' => 'video/webm',
+        'mp4' => 'video/mp4',
+        'mpeg4' => 'video/mp4',
+        'm4v' => 'video/mp4'
+    );
+    const OTHER_EXT = array(
+        'json' => 'application/json'
+    );
+    const CACHE_MAX_AGE = 3600;
+    const WAG_DIR = '.wag';
+    const METADATA_FILE = 'meta.json';
+    const THUMBNAIL_FILE = 'tn.jpg';
+
+    private $gallery;
+    private $method;
+    private $pathSegments;
+    private $query = '';
+
+    public function run()
+    {
+        if (empty($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] === '/') {
+            $this->serveHTML();
+            return;
+        }
+        if ($_SERVER['PATH_INFO'] === self::APP_PATH) {
+            $this->serveScript();
+            return;
+        }
+        $pathInfo = urldecode(substr($_SERVER['REQUEST_URI'], strlen($this->getScriptURLPath())));
+        if (!self::isAPICall($pathInfo)) {
+            throw new Exception('Invalid request path');
+        }
+
+        if (is_file(self::CONFIG_FILE)) {
+            $config = json_decode(file_get_contents(self::CONFIG_FILE), true);
+            if (array_key_exists('b2', $config)) {
+                $this->gallery = new B2Gallery($config);
+            } else {
+                $this->gallery = new LocalGallery();
+            }
+        } else {
+            $this->gallery = new LocalGallery();
+        }
+        $this->method = $_SERVER['REQUEST_METHOD'];
+        $this->pathSegments = explode('/', substr($pathInfo, strlen(self::API_PATH) + 1));
+        if (!empty($_SERVER['QUERY_STRING'])) {
+            parse_str($_SERVER['QUERY_STRING'], $this->query);
+        }
+        if (count($this->pathSegments) < 1) {
+            throw new Exception('Invalid API path');
+        }
+        $handler = array_shift($this->pathSegments) . $this->method;
+        if (!method_exists($this, $handler) || !((new ReflectionMethod($this, $handler))->isPublic())) {
+            throw new Exception('Invalid API path');
+        }
+        call_user_func(array($this, $handler));
+    }
+
+    public function albumsGET()
+    {
+        $album = new AlbumListing($this->gallery->getMediaURL());
+        $album->entries = $this->gallery->list($this->pathSegments);
+        self::serveResponse(json_encode($album, JSON_UNESCAPED_UNICODE), self::OTHER_EXT['json']);
+    }
+
+    public function mediaGET()
+    {
+        if (!($this->gallery instanceof LocalGallery)) {
+            throw new Exception('Not configured for serving local resources.');
+        }
+        $safePath = $this->gallery->getSafePath($this->pathSegments);
+        if (!is_file($safePath)) {
+            throw new Exception('Invalid resource.');
+        }
+        if (self::isMetaPath($safePath)) {
+            switch (basename($safePath)) {
+                case self::THUMBNAIL_FILE:
+                case self::METADATA_FILE:
+                    break;
+                default:
+                    throw new Exception('Invalid resource.');
+            }
+        } else {
+            if (!self::isMedium($safePath)) {
+                throw new Exception('Invalid resource.');
+            }
+        }
+        self::serveFile($safePath);
+    }
+
+    public function assetsGET()
+    {
+        $asset = self::Assets[$this->pathSegments[0]];
+        if (!$asset) {
+            throw new Exception('Invalid asset');
+        }
+        self::serveResponse(base64_decode($asset), self::MEDIA_EXT['gif']);
+    }
+
+    private static function isAPICall($path)
+    {
+        $apiPathLen = strlen(self::API_PATH);
+        return !empty($path) && strlen($path) > $apiPathLen && substr($path, 0, $apiPathLen) === self::API_PATH && $path[$apiPathLen] === '/';
+    }
+
+    public static function getScriptURLPath()
+    {
+        $pathInfoLen = empty($_SERVER['PATH_INFO']) ? 0 : strlen($_SERVER['PATH_INFO']);
+        $phpSelfLen = strlen($_SERVER['PHP_SELF']);
+        return ($phpSelfLen > $pathInfoLen ? substr($_SERVER['PHP_SELF'], 0, $phpSelfLen - $pathInfoLen) : $_SERVER['PHP_SELF']);
+    }
+
+    public static function getFullURL($path)
+    {
+        $server = getenv('WAG_API_SERVER', true);
+        if ($server === false) {
+            $server = '';
+        }
+        return $server . $path;
+    }
+
+    private static function isMetaPath($safePath)
+    {
+        $lenPath = strlen($safePath);
+        $lenWagDir = strlen(self::WAG_DIR);
+        return $lenPath >= $lenWagDir && substr($safePath, 0, $lenWagDir) === self::WAG_DIR &&
+            ($lenPath === $lenWagDir || $safePath[$lenWagDir] === '/');
+    }
+
+    public static function isMedium($path)
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        return array_key_exists($ext, self::MEDIA_EXT);
+    }
+
+    public static function urlencodeSegments($url)
+    {
+        return implode('/', array_map('urlencode', explode('/', $url)));
+    }
+
+    private static function serveResponse($response, $mimeType)
+    {
+        header('Content-Type: ' . $mimeType);
+        header('Cache-Control: private, max-age=' . self::CACHE_MAX_AGE);
+        // bust the web server cache control if present
+        header('Expires:');
+        header('Pragma:');
+        echo ($response);
+    }
+
+    private static function serveFile($safePath)
+    {
+        $ext = strtolower(pathinfo($safePath, PATHINFO_EXTENSION));
+        if (array_key_exists($ext, self::MEDIA_EXT)) {
+            $mimeType = self::MEDIA_EXT[$ext];
+        } elseif (array_key_exists($ext, self::OTHER_EXT)) {
+            $mimeType = self::OTHER_EXT[$ext];
+        } else {
+            $mimeType = null;
+        }
+        if ($mimeType !== null) {
+            header('Content-Type: ' . $mimeType);
+        }
+        header('Cache-Control: private, max-age=' . self::CACHE_MAX_AGE);
+        // bust the web server cache control if present
+        header('Expires:');
+        header('Pragma:');
+        $file = fopen(realpath($safePath), 'rb');
+        fpassthru($file);
+        fclose($file);
     }
 
     private function serveHTML()

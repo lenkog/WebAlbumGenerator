@@ -1,3 +1,5 @@
+import { META_APERTURE, META_CAPTION, META_COPYRIGHT, META_DATE, META_HEIGHT, META_ISO, META_ITEMS, META_LAT, META_LON, META_SHUTTER, META_WIDTH, META_ZOOM } from './constants';
+
 export type Dim2D = {
     w: number,
     h: number,
@@ -9,41 +11,88 @@ export class ViewReadyInfo {
     ) { }
 }
 
+export enum ListingEntryType {
+    ALBUM = 'album',
+    MEDIUM = 'medium',
+}
+
+export type ListingEntry = {
+    type: ListingEntryType,
+    path: string,
+}
+
+export type AlbumListing = {
+    mediaURL: string,
+    entries: ListingEntry[],
+}
+
+export type MetaItems = {
+    [key: string]: {
+        [META_CAPTION]?: string,
+        [META_DATE]?: string,
+    }
+}
+
+export type MetaData = {
+    [META_APERTURE]?: number,
+    [META_CAPTION]?: string,
+    [META_COPYRIGHT]?: string,
+    [META_DATE]?: string,
+    [META_HEIGHT]?: number,
+    [META_ISO]?: number,
+    [META_ITEMS]?: MetaItems,
+    [META_LAT]?: number,
+    [META_LON]?: number,
+    [META_SHUTTER]?: string,
+    [META_WIDTH]?: number,
+    [META_ZOOM]?: number,
+}
+
 export enum ItemType {
     ALBUM = 'album',
     IMAGE = 'image',
     VIDEO = 'video',
 }
 
-export type Item = {
-    type: ItemType,
-    caption: string,
+export class Item {
+    constructor(
+        readonly type: ItemType,
+        readonly caption: string,
+    ) { }
 }
 
-export type AlbumEntry = {
-    type: ItemType,
-    caption: string,
-    path: string,
-    thumbnail: string,
+export class AlbumEntry {
+    constructor(
+        readonly type: ItemType,
+        readonly caption: string,
+        readonly path: string,
+        readonly thumbnail: string,
+    ) { }
 }
 
-export type Album = Item & {
-    albums: AlbumEntry[],
-    media: AlbumEntry[],
+export class Album extends Item {
+    constructor(caption: string) {
+        super(ItemType.ALBUM, caption);
+    }
+    readonly albums: AlbumEntry[] = [];
+    readonly media: AlbumEntry[] = [];
 }
 
-export type Image = Item & {
-    url: string,
+export class Image extends Item {
+    constructor(caption: string, readonly url: string) {
+        super(ItemType.IMAGE, caption);
+    }
 }
 
-export type VideoEntry = {
-    url: string,
-    mimeType: string,
+export class VideoEntry {
+    constructor(readonly url: string, readonly mimeType: string) { }
 }
 
-export type Video = Item & {
-    alternatives: VideoEntry[],
-    posterURL: string,
+export class Video extends Item {
+    constructor(caption: string, readonly posterURL: string) {
+        super(ItemType.VIDEO, caption);
+    }
+    readonly alternatives: VideoEntry[] = [];
 }
 
 export class Breadcrumb {

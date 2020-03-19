@@ -1,18 +1,18 @@
 import axios from 'axios';
-import { Item, Album } from './models';
+import { AlbumListing } from './models';
 import { urlencodeSegments } from './utils';
 
 declare const API_ENDPOINT: string;
 
 enum RESOURCES {
     ALBUMS = '/albums',
-    ITEMS = '/items',
     ASSETS = '/assets',
 };
 
 export enum ASSETS {
     OVERLAY_ALBUM = 'overlay-album',
     OVERLAY_VIDEO = 'overlay-video',
+    DEFAULT_THUMBNAIL = 'default-thumbnail',
 }
 
 function processError(error: any, userSuppliedHandler: (error: string) => void = null) {
@@ -35,7 +35,22 @@ function processError(error: any, userSuppliedHandler: (error: string) => void =
     }
 }
 
-export function getAlbum(path: string, onSuccess: (model: Album) => void, onError: (error: string) => void, beforeRequest: () => void = null) {
+export function getContent(url: string, onSuccess: (data: any) => void, onError: (error: string) => void = null, beforeRequest: () => void = null) {
+    if (beforeRequest !== null) {
+        beforeRequest();
+    }
+    let requestCanceller;
+    let requestOptions = {
+        cancelToken: new axios.CancelToken((c) => requestCanceller = c)
+    };
+    axios.get(url, requestOptions).then(
+        (response) => onSuccess(response.data),
+        (error) => processError(error, onError),
+    );
+    return requestCanceller;
+}
+
+export function getAlbumListing(path: string, onSuccess: (model: AlbumListing) => void, onError: (error: string) => void = null, beforeRequest: () => void = null) {
     if (beforeRequest !== null) {
         beforeRequest();
     }
@@ -44,22 +59,7 @@ export function getAlbum(path: string, onSuccess: (model: Album) => void, onErro
         cancelToken: new axios.CancelToken((c) => requestCanceller = c)
     };
     axios.get(API_ENDPOINT + RESOURCES.ALBUMS + '/' + urlencodeSegments(path), requestOptions).then(
-        (response) => onSuccess(<Album>response.data),
-        (error) => processError(error, onError),
-    );
-    return requestCanceller;
-}
-
-export function getItem(path: string, onSuccess: (model: Item) => void, onError: (error: string) => void, beforeRequest: () => void = null) {
-    if (beforeRequest !== null) {
-        beforeRequest();
-    }
-    let requestCanceller;
-    let requestOptions = {
-        cancelToken: new axios.CancelToken((c) => requestCanceller = c)
-    };
-    axios.get(API_ENDPOINT + RESOURCES.ITEMS + '/' + urlencodeSegments(path), requestOptions).then(
-        (response) => onSuccess(<Item>response.data),
+        (response) => onSuccess(<AlbumListing>response.data),
         (error) => processError(error, onError),
     );
     return requestCanceller;

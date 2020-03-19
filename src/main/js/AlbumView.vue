@@ -17,8 +17,9 @@ import { PATHS, ROOT_CAPTION } from './constants';
 import { Slab, Album, ItemType, ViewReadyInfo } from './models';
 import SlabView from './SlabView.vue';
 import ItemHeaderView from './ItemHeaderView.vue';
-import { getAssetURL, ASSETS, getAlbum } from './service';
+import { getAssetURL, ASSETS } from './service';
 import { trailingPath, urldecodeSegments, urlencodeSegments } from './utils';
+import { getAlbum } from './wag';
 
 @Component({
     components: {
@@ -51,9 +52,6 @@ export default class AlbumView extends Vue {
 
     onLoaded(model: Album) {
         this.model = model;
-        if (this.path === '') {
-            this.model.caption = ROOT_CAPTION;
-        }
         this.albums = [];
         this.media = [];
         this.model.albums.forEach(info =>
