@@ -27,13 +27,18 @@ if (version_compare(PHP_VERSION, '5.6') < 0) {
     die('PHP version greater than 5.6 is required.');
 }
 
+function serveError($code, $msg = '')
+{
+    http_response_code($code);
+    die(htmlspecialchars($msg));
+}
+
 function errorHandler($errno, $msg)
 {
     if (!(error_reporting() & $errno)) {
         return false;
     }
-    http_response_code(500);
-    die(htmlspecialchars($msg));
+    serveError(500, $msg);
 }
 set_error_handler('errorHandler');
 
@@ -99,7 +104,7 @@ class LocalGallery implements Gallery
             $localPath === false || $localPathLen < $scriptDirLen || strncmp($scriptDir, $localPath, $scriptDirLen) != 0 ||
             ($localPathLen > $scriptDirLen && $localPath[$scriptDirLen] !== '/')
         ) {
-            throw new Exception("Invalid pointer to resource: " . $normalPath);
+            serveError(404);
         }
         return substr($localPath, $scriptDirLen + ($localPathLen > $scriptDirLen ? 1 : 0));
     }
@@ -110,7 +115,7 @@ class LocalGallery implements Gallery
         $entries = [];
         $localPath = realpath($safePath);
         if (!is_dir($localPath)) {
-            throw new Exception('Not an album');
+            serveError(404);
         }
         foreach (scandir($localPath) as $file) {
             if ($file === '.' || $file === '..' || $file === '.wag') {
@@ -269,7 +274,7 @@ class WAG
         }
         $pathInfo = urldecode(substr($_SERVER['REQUEST_URI'], strlen($this->getScriptURLPath())));
         if (!self::isAPICall($pathInfo)) {
-            throw new Exception('Invalid request path');
+            serveError(404);
         }
 
         if (is_file(self::CONFIG_FILE)) {
@@ -288,11 +293,11 @@ class WAG
             parse_str($_SERVER['QUERY_STRING'], $this->query);
         }
         if (count($this->pathSegments) < 1) {
-            throw new Exception('Invalid API path');
+            serveError(404, 'Invalid API call');
         }
         $handler = array_shift($this->pathSegments) . $this->method;
         if (!method_exists($this, $handler) || !((new ReflectionMethod($this, $handler))->isPublic())) {
-            throw new Exception('Invalid API path');
+            serveError(404, 'Invalid API call');
         }
         call_user_func(array($this, $handler));
     }
@@ -311,7 +316,7 @@ class WAG
         }
         $safePath = $this->gallery->getSafePath($this->pathSegments);
         if (!is_file($safePath)) {
-            throw new Exception('Invalid resource.');
+            serveError(404);
         }
         if (self::isMetaPath($safePath)) {
             switch (basename($safePath)) {
@@ -319,11 +324,11 @@ class WAG
                 case self::METADATA_FILE:
                     break;
                 default:
-                    throw new Exception('Invalid resource.');
+                    serveError(404);
             }
         } else {
             if (!self::isMedium($safePath)) {
-                throw new Exception('Invalid resource.');
+                serveError(404);
             }
         }
         self::serveFile($safePath);
@@ -331,10 +336,10 @@ class WAG
 
     public function assetsGET()
     {
-        $asset = self::Assets[$this->pathSegments[0]];
-        if (!$asset) {
-            throw new Exception('Invalid asset');
+        if (count($this->pathSegments) < 1 || !array_key_exists($this->pathSegments[0], self::Assets)) {
+            serveError(404);
         }
+        $asset = self::Assets[$this->pathSegments[0]];
         self::serveResponse(base64_decode($asset), self::MEDIA_EXT['gif']);
     }
 

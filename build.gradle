@@ -5,6 +5,7 @@ plugins {
 ext.packageJson = file('package.json')
 ext.testDataSrcDir = file('src/test/data')
 ext.testDir = "${buildDir}/test"
+ext.testSiblingDir = "${buildDir}/test-sibling"
 ext.devTestDir = "${buildDir}/devTest"
 ext.dataTimestampsFile = file('src/test/meta/data_times.txt')
 
@@ -94,26 +95,45 @@ task prepareTest(dependsOn: assemble) {
         exec {
             commandLine 'rm', '-rf', testDir
         }
+        delete testSiblingDir
         copyWithTimestamps(testDataSrcDir, testDir, dataTimestampsFile)
         copy {
             from "${buildDir}/wag.php"
             into testDir
         }
+        mkdir testSiblingDir
+        copy {
+            from "${testDir}/image.jpg"
+            into testSiblingDir
+        }
     }
 }
 
-task testMetaGen(dependsOn: prepareTest) {
+task runMetaGen(dependsOn: prepareTest) {
     doLast {
         exec {
             commandLine 'python3', file('src/main/python/wagmetagen.py'), testDir
         }
+    }
+}
+
+task testMetaGen(dependsOn: runMetaGen) {
+    doLast {
         exec {
             commandLine 'python3', file('src/test/python/assert_same_meta.py'), file('src/test/meta/expected'), file("${testDir}/.wag")
         }
     }
 }
 
-check.dependsOn testMetaGen
+task testPHP(dependsOn: runMetaGen) {
+    doLast {
+        exec {
+            commandLine 'python3', file('src/test/python/test_php.py'), testDir
+        }
+    }
+}
+
+check.dependsOn(testMetaGen, testPHP)
 
 task setupDevTest() {
     doLast {

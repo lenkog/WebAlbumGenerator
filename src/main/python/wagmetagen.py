@@ -459,5 +459,5 @@ def main(argv=None):
     print('Thumbnails generated:', thumbnailsGenerated)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
