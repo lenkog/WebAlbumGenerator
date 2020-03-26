@@ -312,7 +312,7 @@ class WAG
     public function mediaGET()
     {
         if (!($this->gallery instanceof LocalGallery)) {
-            throw new Exception('Not configured for serving local resources.');
+            serveError(404, 'Not configured to serve local resources.');
         }
         $safePath = $this->gallery->getSafePath($this->pathSegments);
         if (!is_file($safePath)) {

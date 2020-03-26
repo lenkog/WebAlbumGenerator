@@ -20,13 +20,18 @@ MEDIA_EXT = {
 }
 
 testFolder = None
+cookie = None
 
 
 def call(path, decode=True, method='GET'):
+    global cookie
     request = urllib.request.Request(
         'http://localhost:8000/' + os.path.basename(testFolder) + '/wag.php' + urllib.parse.quote(path, safe='/'), method=method)
+    if cookie is not None:
+        request.add_header('Cookie', cookie)
     try:
         response = urllib.request.urlopen(request)
+        cookie = response.getheader('Set-Cookie', None)
     except urllib.error.HTTPError as e:
         return (e.code, '', '')
     data = response.read()
@@ -45,6 +50,18 @@ class TestPHP(unittest.TestCase):
             line = stdout.readline()
             while 'http://localhost:8000' not in line:
                 line = stdout.readline()
+
+        cls.isB2 = False
+        cls.mediaURL = '/' + \
+            os.path.basename(testFolder) + '/wag.php/api/media/'
+        if os.path.exists(os.path.join(testFolder, 'wag.config.json')):
+            with open(os.path.join(testFolder, 'wag.config.json')) as f:
+                config = json.load(f)
+                if 'b2' in config:
+                    cls.isB2 = True
+                    cls.mediaURL = config['b2']['url']
+                    if 'root' in config['b2']:
+                        cls.mediaURL += config['b2']['root']
 
     @classmethod
     def tearDownClass(cls):
@@ -108,8 +125,7 @@ class TestPHP(unittest.TestCase):
         self.assertEqual(res[0], 200)
         self.assertTrue('application/json' in res[1])
         actual = json.loads(res[2])
-        self.assertEqual(
-            actual['mediaURL'], '/' + os.path.basename(testFolder) + '/wag.php/api/media/')
+        self.assertEqual(actual['mediaURL'], self.mediaURL)
         expectedCount = 0
         for item in expected:
             path = os.path.join(folder, item)
@@ -117,8 +133,9 @@ class TestPHP(unittest.TestCase):
                 self.assertTrue({'path': path, 'type': 'medium'}
                                 in actual['entries'], msg='Path not in response: ' + path)
                 expectedCount += 1
-                res = call('/api/albums/' + path)
-                self.assertEqual(404, res[0])
+                if not self.isB2:
+                    res = call('/api/albums/' + path)
+                    self.assertEqual(404, res[0])
             if os.path.isdir(os.path.join(testFolder, path)) and item != '.wag':
                 self.assertTrue({'path': path, 'type': 'album'}
                                 in actual['entries'], msg='Path not in response: ' + path)
@@ -139,24 +156,27 @@ class TestPHP(unittest.TestCase):
         self.assertEqual(res[0], 404)
 
         self.assertEqual(call('/api/albums'), call('/api/albums/'))
-        res = call('/api/albums/invalid')
-        self.assertEqual(res[0], 404)
 
-        res = call('/api/albums/..')
-        self.assertEqual(res[0], 404)
-        res = call('/api/albums/many')
-        self.assertEqual(res[0], 200)
-        res = call('/api/albums/many/..')
-        self.assertEqual(res[0], 200)
-        res = call('/api/albums/many/../..')
-        self.assertEqual(res[0], 404)
-        res = call('/api/albums/many/../../' + os.path.basename(testFolder))
-        self.assertEqual(res[0], 200)
-        res = call('/api/albums/many/../../test-sibling')
-        self.assertEqual(res[0], 404)
-        res = call('/api/albums/many/../../../' +
-                   os.path.basename(os.path.dirname(testFolder)))
-        self.assertEqual(res[0], 404)
+        if not self.isB2:
+            res = call('/api/albums/invalid')
+            self.assertEqual(res[0], 404)
+
+            res = call('/api/albums/..')
+            self.assertEqual(res[0], 404)
+            res = call('/api/albums/many')
+            self.assertEqual(res[0], 200)
+            res = call('/api/albums/many/..')
+            self.assertEqual(res[0], 200)
+            res = call('/api/albums/many/../..')
+            self.assertEqual(res[0], 404)
+            res = call('/api/albums/many/../../' +
+                       os.path.basename(testFolder))
+            self.assertEqual(res[0], 200)
+            res = call('/api/albums/many/../../test-sibling')
+            self.assertEqual(res[0], 404)
+            res = call('/api/albums/many/../../../' +
+                       os.path.basename(os.path.dirname(testFolder)))
+            self.assertEqual(res[0], 404)
 
     def rescurse_media(self, folder):
         items = os.listdir(os.path.join(testFolder, folder))
@@ -176,6 +196,11 @@ class TestPHP(unittest.TestCase):
                 self.rescurse_media(path)
 
     def test_media(self):
+        if self.isB2:
+            res = call('/api/media/image.jpg', decode=False)
+            self.assertEqual(res[0], 404)
+            return
+
         self.rescurse_media('')
 
         res = call('/api/media/image.jpg', decode=False)
@@ -205,7 +230,7 @@ class TestPHP(unittest.TestCase):
 
 def main(argv=None):
     if argv is None:
-        ourArgv = [sys.argv.pop()]
+        ourArgv = sys.argv[1:]
     else:
         ourArgv = argv
     parser = argparse.ArgumentParser(
@@ -215,6 +240,7 @@ def main(argv=None):
     args = parser.parse_args(ourArgv)
     global testFolder
     testFolder = args.folder
+    sys.argv = sys.argv[0:1]
     unittest.main()
 
 

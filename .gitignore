@@ -4,6 +4,7 @@
 /build
 /gradlew
 
+/b2Config.json
 /releases
 /test
 /scratchpad

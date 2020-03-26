@@ -117,6 +117,25 @@ task runMetaGen(dependsOn: prepareTest) {
     }
 }
 
+task prepareB2Test(dependsOn: runMetaGen) {
+    doLast {
+        def bucket
+        def root
+        try {
+            def b2Config = new groovy.json.JsonSlurper().parse(file('b2Config.json'), 'utf-8')
+            bucket = b2Config.b2.bucketName
+            root = b2Config.b2.containsKey('root') ? b2Config.b2.root : ''
+        } catch(Exception e) {
+            println('To run Backblaze B2 tests, in the root of the project there has to be a file "b2Config.json" with the B2 configuration for WAG.')
+            throw e
+        }
+        println('Using B2 bucket and file root: ' + bucket + '/' + root)
+        exec {
+            commandLine 'b2', 'sync', '--noProgress', '--allowEmptySource', '--delete', '--replaceNewer', testDir, 'b2://' + bucket + '/' + root
+        }
+    }
+}
+
 task testMetaGen(dependsOn: runMetaGen) {
     doLast {
         exec {
@@ -127,6 +146,20 @@ task testMetaGen(dependsOn: runMetaGen) {
 
 task testPHP(dependsOn: runMetaGen) {
     doLast {
+        delete "${testDir}/wag.config.json"
+        exec {
+            commandLine 'python3', file('src/test/python/test_php.py'), testDir
+        }
+    }
+}
+
+task testB2PHP(dependsOn: prepareB2Test) {
+    doLast {
+        copy {
+            from file('b2Config.json')
+            into testDir
+            rename('b2Config.json', 'wag.config.json')
+        }
         exec {
             commandLine 'python3', file('src/test/python/test_php.py'), testDir
         }
@@ -134,6 +167,9 @@ task testPHP(dependsOn: runMetaGen) {
 }
 
 check.dependsOn(testMetaGen, testPHP)
+if(file('b2Config.json').isFile()) {
+    check.dependsOn(testB2PHP)
+}
 
 task setupDevTest() {
     doLast {
