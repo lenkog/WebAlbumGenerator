@@ -119,7 +119,7 @@ class TestPHP(unittest.TestCase):
         res = call('/api/assets/invalid', decode=False)
         self.assertEqual(res[0], 404)
 
-    def rescurse_albums(self, folder):
+    def _rescurse_albums(self, folder):
         expected = os.listdir(os.path.join(testFolder, folder))
         res = call('/api/albums/' + folder)
         self.assertEqual(res[0], 200)
@@ -140,11 +140,11 @@ class TestPHP(unittest.TestCase):
                 self.assertTrue({'path': path, 'type': 'album'}
                                 in actual['entries'], msg='Path not in response: ' + path)
                 expectedCount += 1
-                self.rescurse_albums(path)
+                self._rescurse_albums(path)
         self.assertEqual(len(actual['entries']), expectedCount)
 
     def test_albums(self):
-        self.rescurse_albums('')
+        self._rescurse_albums('')
 
         res = call('/api/albums/')
         self.assertEqual(res[0], 200)
@@ -178,7 +178,7 @@ class TestPHP(unittest.TestCase):
                        os.path.basename(os.path.dirname(testFolder)))
             self.assertEqual(res[0], 404)
 
-    def rescurse_media(self, folder):
+    def _rescurse_media(self, folder):
         items = os.listdir(os.path.join(testFolder, folder))
         for item in items:
             path = os.path.join(folder, item)
@@ -193,7 +193,7 @@ class TestPHP(unittest.TestCase):
             if os.path.isdir(os.path.join(testFolder, path)):
                 res = call('/api/media/' + path, decode=False)
                 self.assertEqual(res[0], 404)
-                self.rescurse_media(path)
+                self._rescurse_media(path)
 
     def test_media(self):
         if self.isB2:
@@ -201,7 +201,7 @@ class TestPHP(unittest.TestCase):
             self.assertEqual(res[0], 404)
             return
 
-        self.rescurse_media('')
+        self._rescurse_media('')
 
         res = call('/api/media/image.jpg', decode=False)
         self.assertEqual(res[0], 200)

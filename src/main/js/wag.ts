@@ -91,7 +91,8 @@ function itemFromListing(path: string, listing: AlbumListing, meta: MetaData = n
         }
     }
     if (group[ItemType.VIDEO].length > 0) {
-        let item = new Video(itemCaption, getMediaURL(listing.mediaURL, group[ItemType.IMAGE][0]));
+        let poster = group[ItemType.IMAGE].length > 0 ? getMediaURL(listing.mediaURL, group[ItemType.IMAGE][0]) : null;
+        let item = new Video(itemCaption, poster);
         group[ItemType.VIDEO].forEach(video => {
             item.alternatives.push(new VideoEntry(getMediaURL(listing.mediaURL, video), videoMIME(video)));
         });

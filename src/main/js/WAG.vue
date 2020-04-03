@@ -1,5 +1,5 @@
 <template>
-    <div :id="wagContainerId" class="wagContainer">
+    <div id="wagContainer">
         <div class="wagBreadcrumbs">
             <span v-if="breadcrumbs.length > 0">Back to</span>
             <div
@@ -38,7 +38,6 @@ export default class WAG extends Vue {
 
     windowSize: Dim2D = null;
     breadcrumbs: Breadcrumb[] = [];
-    wagContainerId: string = WAG_CONTAINER_ID;
 
     mounted() {
         this.onResize();

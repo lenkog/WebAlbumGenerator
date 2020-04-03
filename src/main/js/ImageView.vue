@@ -5,6 +5,8 @@
             :src="model.url"
             :style="'maxWidth:' + maxDim.w + 'px; maxHeight:' + maxDim.h + 'px;'"
             class="wagImage"
+            :title="model.caption"
+            :alt="model.caption"
         />
     </div>
 </template>

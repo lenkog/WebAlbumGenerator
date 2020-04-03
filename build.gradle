@@ -166,7 +166,27 @@ task testB2PHP(dependsOn: prepareB2Test) {
     }
 }
 
-check.dependsOn(testMetaGen, testPHP)
+task testWebApp(dependsOn: runMetaGen) {
+    doLast {
+        delete "${testDir}/wag.config.json"
+        exec {
+            commandLine 'python3', file('src/test/python/test_webapp.py'), testDir
+        }
+        try {
+            delete testSiblingDir
+            mkdir testSiblingDir
+            java.nio.file.Files.move(file("${testDir}/.wag").toPath(), file("${testSiblingDir}/.wag").toPath())
+            exec {
+                commandLine 'python3', file('src/test/python/test_webapp.py'), testDir
+            }
+        } finally {
+            java.nio.file.Files.move(file("${testSiblingDir}/.wag").toPath(), file("${testDir}/.wag").toPath())
+            delete testSiblingDir
+        }
+    }
+}
+
+check.dependsOn(testMetaGen, testPHP, testWebApp)
 if(file('b2Config.json').isFile()) {
     check.dependsOn(testB2PHP)
 }
