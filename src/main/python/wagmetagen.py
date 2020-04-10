@@ -16,8 +16,10 @@ import dateutil.parser
 import imageio
 import iptcinfo3
 import numpy
+from PIL import Image as PILImage
 
 logging.getLogger('iptcinfo').disabled = True
+PILImage.MAX_IMAGE_PIXELS = 10000 * 10000
 
 canReadVideos = importlib.util.find_spec('imageio_ffmpeg') is not None
 

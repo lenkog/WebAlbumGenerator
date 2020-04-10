@@ -44,7 +44,6 @@ window.onload = function () {
     });
 
     function onViewReady(info: ViewReadyInfo) {
-        document.title = info.caption;
         pendingScroll.complete();
     }
 

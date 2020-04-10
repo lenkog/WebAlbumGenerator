@@ -19,6 +19,10 @@ ALBUM = 'album'
 IMAGE = 'image'
 VIDEO = 'video'
 MEDIA = 'media'
+NAME = 'name'
+LINK = 'link'
+ICON = 'icon'
+ENABLED = 'enabled'
 IMAGE_EXT = {'.jpg', '.png', '.jpeg', '.gif'}
 VIDEO_EXT = {'.mp4', '.mpeg4', '.m4v', '.webm'}
 EXT_2_MIME = {
@@ -32,6 +36,7 @@ EXT_2_MIME = {
     '.m4v': 'video/mp4',
 }
 ROOT_CAPTION = 'Gallery'
+THUMBNAIL_SIZE = 125
 
 
 def isimage(path):
@@ -40,6 +45,13 @@ def isimage(path):
 
 def isvideo(path):
     return os.path.isfile(path) and os.path.splitext(path)[1].lower() in VIDEO_EXT
+
+
+def getMedia(pathPrefix, path):
+    return sorted(map(lambda x: os.path.join(path, x), filter(
+        lambda x: x != '.wag' and (isimage(os.path.join(
+            pathPrefix, path, x)) or isvideo(os.path.join(pathPrefix, path, x))),
+        os.listdir(os.path.join(pathPrefix, path)))))
 
 
 def getItems(pathPrefix, path):
@@ -88,6 +100,22 @@ def metaId(path):
     return hashlib.md5(path.encode('utf-8')).hexdigest()
 
 
+def getPrevNext(items, isOfInterest):
+    isEncountered = False
+    prv = None
+    nxt = None
+    for item in items:
+        if isOfInterest(item):
+            isEncountered = True
+            continue
+        if not isEncountered:
+            prv = item
+        else:
+            nxt = item
+            break
+    return (prv, nxt)
+
+
 class TestApp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -112,7 +140,7 @@ class TestApp(unittest.TestCase):
         cls.browser.quit()
 
     def _isViewLoaded(self, browser, caption):
-        return browser.find_element_by_class_name('wagItemCaption').text != 'Loading...' and browser.title == caption
+        return browser.find_element_by_class_name('wagCaption').text != 'Loading...' and browser.title == caption
 
     def _getMeta(self, folder):
         meta = None
@@ -131,6 +159,21 @@ class TestApp(unittest.TestCase):
         if folder == '':
             caption = ROOT_CAPTION
         return caption
+
+    def _getAlbumLink(self, album, safeChars=URL_SAFE_CHARS):
+        if album is not None:
+            if album == '':
+                album = self.wagURL + '/#/album'
+            else:
+                album = self.wagURL + '/#/album/' + \
+                    urllib.parse.quote(album, safeChars)
+        return album
+
+    def _getItemLink(self, item, safeChars=URL_SAFE_CHARS):
+        if item is not None:
+            item = self.wagURL + '/#/item/' + \
+                urllib.parse.quote(item, safeChars)
+        return item
 
     def test_home(self):
         self.browser.get(self.wagURL)
@@ -158,38 +201,64 @@ class TestApp(unittest.TestCase):
         self.browser.refresh()
         self.wait.until(lambda d: self._isViewLoaded(d, ROOT_CAPTION))
 
-    def _validateHeader(self, folder, caption):
+    def _validateAction(self, action, actionElement):
+        if not action[ENABLED]:
+            icon = actionElement.find_element_by_tag_name('img')
+            self.assertTrue(action[ICON] in icon.get_attribute('src'))
+            self.assertTrue('wagBtnDisabled' in icon.get_attribute('class'))
+        else:
+            link = actionElement.find_element_by_tag_name('a')
+            icon = link.find_element_by_tag_name('img')
+            self.assertEqual(link.get_attribute('href'), action[LINK])
+            self.assertTrue(action[ICON] in icon.get_attribute('src'))
+            self.assertEqual(icon.get_attribute('title'), action[NAME])
+            self.assertEqual(icon.get_attribute('alt'), action[NAME])
+            self.assertTrue(
+                'wagBtnDisabled' not in icon.get_attribute('class'))
+
+    def _validateHeader(self, folder, caption, actions):
         self.assertEqual(self.browser.title, caption)
         self.assertEqual(self.browser.find_element_by_class_name(
-            'wagItemCaption').text, caption)
-        breadcrumbs = self.browser.find_element_by_class_name(
-            'wagBreadcrumbs').find_elements_by_class_name('wagBreadcrumb')
+            'wagCaption').text, caption)
+        actionElements = self.browser.find_elements_by_class_name('wagAction')
+        self.assertTrue(len(actionElements) > 0)
+        self._validateAction(
+            {NAME: 'Menu', LINK: None, ICON: '/api/assets/btn-menu', ENABLED: False}, actionElements[-1])
         if folder == '':
-            self.assertEqual(len(breadcrumbs), 0)
+            customActionsStartIdx = 0
+            self.assertEqual(len(actionElements), len(actions) + 1)
         else:
-            rootLink = breadcrumbs[0].find_element_by_tag_name('a')
-            self.assertEqual(rootLink.get_attribute(
-                'href'), self.wagURL + '/#/album')
-            self.assertEqual(rootLink.text, ROOT_CAPTION)
+            customActionsStartIdx = 1
+            self.assertEqual(len(actionElements), len(actions) + 2)
             parentAlbums = folder.split('/')
-            self.assertEqual(len(breadcrumbs), len(parentAlbums), folder)
-            for i in range(1, len(parentAlbums)):
-                link = breadcrumbs[i].find_element_by_tag_name('a')
-                self.assertEqual(link.get_attribute('href'), self.wagURL + '/#/album/' +
-                                 urllib.parse.quote('/'.join(parentAlbums[0:i]), safe=URL_SAFE_CHARS_RELAXED))
-                self.assertEqual(link.text, parentAlbums[i - 1])
+            if len(parentAlbums) > 1:
+                self._validateAction({
+                    NAME: 'Back to ' + parentAlbums[-2],
+                    LINK: self._getAlbumLink('/'.join(parentAlbums[0:-1]), URL_SAFE_CHARS_RELAXED),
+                    ICON: '/api/assets/btn-back',
+                    ENABLED: True,
+                }, actionElements[0])
+            else:
+                self._validateAction({
+                    NAME: 'Back to ' + ROOT_CAPTION,
+                    LINK: self._getAlbumLink('', URL_SAFE_CHARS_RELAXED),
+                    ICON: '/api/assets/btn-back',
+                    ENABLED: True,
+                }, actionElements[0])
+        for i, action in enumerate(actions):
+            self._validateAction(
+                action, actionElements[i + customActionsStartIdx])
 
     def _rescurse_albums(self, folder):
         items = getAlbumEntries(getItems(testFolder, folder))
         meta = self._getMeta(folder)
         caption = self._getCaption(folder, meta)
 
-        self.browser.get(self.wagURL + '/#/album/' +
-                         urllib.parse.quote(folder, safe=URL_SAFE_CHARS))
+        self.browser.get(self._getAlbumLink(folder))
         self.browser.refresh()
         self.wait.until(lambda d: self._isViewLoaded(d, caption))
 
-        self._validateHeader(folder, caption)
+        self._validateHeader(folder, caption, [])
 
         slabs = self.browser.find_element_by_id(
             'wagSlabs').find_elements_by_class_name('wagSlab')
@@ -215,7 +284,7 @@ class TestApp(unittest.TestCase):
             self.assertEqual(thumbnail.get_attribute('title'), itemCaption)
             self.assertEqual(thumbnail.get_attribute('alt'), itemCaption)
             height = self.browser.get_window_size()['height']
-            if thumbnail.location['y'] > height:
+            if thumbnail.location['y'] > height - THUMBNAIL_SIZE:
                 # images should be lazy-loaded by v-lazy-image
                 self.assertEqual(thumbnail.get_attribute('src'), '//:0')
             else:
@@ -227,16 +296,14 @@ class TestApp(unittest.TestCase):
                         'src'), self.wagURL + '/api/assets/default-thumbnail')
 
             if i < len(items[ALBUM]):
-                self.assertEqual(linkURL, self.wagURL + '/#/album/' +
-                                 urllib.parse.quote(item, safe=URL_SAFE_CHARS))
+                self.assertEqual(linkURL, self._getAlbumLink(item))
                 overlay = link.find_element_by_class_name('wagSlabOverlay')
                 self.assertEqual(overlay.get_attribute('src'),
                                  self.wagURL + '/api/assets/overlay-album')
                 self.assertEqual(overlay.get_attribute('title'), itemCaption)
                 self.assertEqual(slab.text, itemCaption)
             else:
-                self.assertEqual(linkURL, self.wagURL + '/#/item/' +
-                                 urllib.parse.quote(item, safe=URL_SAFE_CHARS))
+                self.assertEqual(linkURL, self._getItemLink(item))
                 if os.path.splitext(item)[1].lower() in VIDEO_EXT:
                     overlay = link.find_element_by_class_name('wagSlabOverlay')
                     self.assertEqual(overlay.get_attribute(
@@ -256,17 +323,25 @@ class TestApp(unittest.TestCase):
 
     def _rescurse_items(self, folder):
         items = getItems(testFolder, folder)
+        media = getMedia(testFolder, folder)
 
         for item in items[IMAGE][0:MAX_ITEMS_TO_CHECK]:
             meta = self._getMeta(item)
             caption = self._getCaption(item, meta)
 
-            self.browser.get(self.wagURL + '/#/item/' +
-                             urllib.parse.quote(item, safe=URL_SAFE_CHARS))
+            self.browser.get(self._getItemLink(item))
             self.browser.refresh()
             self.wait.until(lambda d: self._isViewLoaded(d, caption))
 
-            self._validateHeader(item, caption)
+            (prv, nxt) = getPrevNext(media, lambda x: x == item)
+            prv = self._getItemLink(prv)
+            nxt = self._getItemLink(nxt)
+            self._validateHeader(item, caption, [
+                {NAME: 'Previous', LINK: prv, ICON: '/api/assets/btn-prev',
+                    ENABLED: prv is not None},
+                {NAME: 'Next', LINK: nxt, ICON: '/api/assets/btn-next',
+                    ENABLED: nxt is not None},
+            ])
 
             image = self.browser.find_element_by_class_name('wagImage')
             self.assertEqual(image.get_attribute(
@@ -281,6 +356,7 @@ class TestApp(unittest.TestCase):
         for item in items[VIDEO][0:MAX_ITEMS_TO_CHECK]:
             videos = sorted(item[VIDEO])
             leadVideo = videos[0]
+            commonName = os.path.splitext(os.path.basename(leadVideo))[0]
             poster = item[IMAGE]
             alternatives = videos.copy()
             if poster:
@@ -290,12 +366,20 @@ class TestApp(unittest.TestCase):
                 meta = self._getMeta(alt)
                 caption = self._getCaption(alt, meta)
 
-                self.browser.get(self.wagURL + '/#/item/' +
-                                 urllib.parse.quote(alt, safe=URL_SAFE_CHARS))
+                self.browser.get(self._getItemLink(alt))
                 self.browser.refresh()
                 self.wait.until(lambda d: self._isViewLoaded(d, caption))
 
-                self._validateHeader(alt, caption)
+                (prv, nxt) = getPrevNext(media, lambda x: os.path.splitext(
+                    os.path.basename(x))[0] == commonName)
+                prv = self._getItemLink(prv)
+                nxt = self._getItemLink(nxt)
+                self._validateHeader(alt, caption, [
+                    {NAME: 'Previous', LINK: prv, ICON: '/api/assets/btn-prev',
+                        ENABLED: prv is not None},
+                    {NAME: 'Next', LINK: nxt, ICON: '/api/assets/btn-next',
+                        ENABLED: nxt is not None},
+                ])
 
                 video = self.browser.find_element_by_class_name('wagVideo')
                 if poster:

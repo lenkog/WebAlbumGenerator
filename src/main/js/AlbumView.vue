@@ -1,6 +1,5 @@
 <template>
     <div>
-        <item-header-view :model="model" />
         <div id="wagSlabs">
             <slab-view v-for="album in albums" :key="album.path" :model="album" />
             <slab-view v-for="medium in media" :key="medium.path" :model="medium" />
@@ -16,14 +15,12 @@ import { Route } from 'vue-router';
 import { PATHS, ROOT_CAPTION } from './constants';
 import { Slab, Album, ItemType, ViewReadyInfo } from './models';
 import SlabView from './SlabView.vue';
-import ItemHeaderView from './ItemHeaderView.vue';
 import { getAssetURL, ASSETS } from './service';
 import { trailingPath, urldecodeSegments, urlencodeSegments } from './utils';
 import { getAlbum } from './wag';
 
 @Component({
     components: {
-        ItemHeaderView,
         SlabView
     }
 })
@@ -78,7 +75,7 @@ export default class AlbumView extends Vue {
                 )
             )
         );
-        this.$emit('viewReady', new ViewReadyInfo(this.model.caption));
+        this.$emit('viewReady', new ViewReadyInfo(this.model.caption, []));
     }
 
     beforeRouteUpdate(to: Route, from: Route, next: Function) {

@@ -1,5 +1,6 @@
 @FG_COLOR:#000000;
 @BG_COLOR: #f0f0f0;
+@FG_MUTED_COLOR: darkgrey;
 @HILITE_COLOR: #1eb9a3;
 @THUMB_BG_COLOR: #ffffff;
 @THUMB_SIZE: 125px;
@@ -19,14 +20,18 @@
 #wagContainer a img {
     border: none;
 }
-.wagBreadcrumbs {
-    min-height: 1.2em;
-    margin: 0px 3px 1em 3px;
-    padding: 3px;
-    font-size: small;
+.wagHeader {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin-bottom: 1ex;
+    padding-bottom: 3px;
+    border-bottom: 2px solid @FG_MUTED_COLOR;
 }
-.wagBreadcrumb {
-    display: inline-block;
+.wagCaption {
+    flex-grow: 1;
+    padding: 0 1em;
+    font-weight: bold;
 }
 .wagErrorMsg {
     color: #ff0000;
@@ -50,15 +55,6 @@
 }
 .wagSpaceOnLeft {
     padding-left: .5ex;
-}
-.wagItemHeader {
-    margin-bottom: 1ex;
-}
-.wagItemCaption {
-    display: inline-block;
-    margin: 0px 1em;
-    vertical-align: middle;
-    font-weight: bold;
 }
 .wagSlab {
     display: inline-block;
@@ -101,4 +97,10 @@
     margin-left: auto;
     margin-right: auto;
     image-orientation: from-image;
+}
+.wagBtn:hover {
+    background-color: @HILITE_COLOR;
+}
+.wagBtnDisabled {
+    opacity: .3;
 }

@@ -1,7 +1,7 @@
-import { META_CAPTION, META_ITEMS, ROOT_CAPTION } from './constants';
+import { META_CAPTION, META_ITEMS, PATHS, ROOT_CAPTION } from './constants';
 import { Album, AlbumEntry, AlbumListing, Image, Item, ItemType, ListingEntryType, MetaData, MetaItems, Video, VideoEntry } from './models';
 import { getAlbumListing, getContent } from './service';
-import { basename, dirname, filename, getMediaURL, getMetaId, getMetaURL, getThumbnailURL, guessMediaType, videoMIME } from './utils';
+import { basename, dirname, filename, getMediaURL, getMetaId, getMetaURL, getNavigation, getThumbnailURL, guessMediaType, urlencodeSegments, videoMIME } from './utils';
 
 class ItemGrouping {
     readonly [ItemType.ALBUM] = <string[]>[];
@@ -78,27 +78,31 @@ function itemFromListing(path: string, listing: AlbumListing, meta: MetaData = n
             itemCaption = meta[META_CAPTION];
         }
     }
+    let mediaEntries = listing.entries.filter(e => e.type === ListingEntryType.MEDIUM).map(e => e.path)
     let itemName = filename(path);
     let group = new ItemGrouping();
-    for (let entry of listing.entries) {
-        if (entry.type === ListingEntryType.MEDIUM && filename(entry.path) === itemName) {
-            let type = guessMediaType(entry.path);
+    for (let entry of mediaEntries) {
+        if (filename(entry) === itemName) {
+            let type = guessMediaType(entry);
             if (type !== null) {
-                group[type].push(entry.path);
+                group[type].push(entry);
             } else {
-                console.error('Unrecognized entry type', entry.path);
+                console.error('Unrecognized entry type', entry);
             }
         }
     }
+    let path4Nav = (p: string) => (p == null ? null : urlencodeSegments(PATHS.ITEM + '/' + p));
     if (group[ItemType.VIDEO].length > 0) {
         let poster = group[ItemType.IMAGE].length > 0 ? getMediaURL(listing.mediaURL, group[ItemType.IMAGE][0]) : null;
         let item = new Video(itemCaption, poster);
         group[ItemType.VIDEO].forEach(video => {
             item.alternatives.push(new VideoEntry(getMediaURL(listing.mediaURL, video), videoMIME(video)));
         });
+        item.navigation = getNavigation(mediaEntries, e => filename(e) === itemName, path4Nav);
         return item;
     } else {
         let item = new Image(itemCaption, getMediaURL(listing.mediaURL, path));
+        item.navigation = getNavigation(mediaEntries, e => e === path, path4Nav);
         return item;
     }
 }

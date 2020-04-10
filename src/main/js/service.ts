@@ -13,6 +13,10 @@ export enum ASSETS {
     OVERLAY_ALBUM = 'overlay-album',
     OVERLAY_VIDEO = 'overlay-video',
     DEFAULT_THUMBNAIL = 'default-thumbnail',
+    BTN_MENU = "btn-menu",
+    BTN_BACK = "btn-back",
+    BTN_PREV = "btn-prev",
+    BTN_NEXT = "btn-next",
 }
 
 function processError(error: any, userSuppliedHandler: (error: string) => void = null) {

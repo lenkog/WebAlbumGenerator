@@ -5,9 +5,20 @@ export type Dim2D = {
     h: number,
 }
 
+export class Action {
+    constructor(
+        readonly name: string,
+        readonly link: string,
+        readonly call: () => void,
+        readonly icon: string,
+        readonly enabled: boolean,
+    ) { }
+}
+
 export class ViewReadyInfo {
     constructor(
         readonly caption: string,
+        readonly actions: Action[],
     ) { }
 }
 
@@ -54,11 +65,17 @@ export enum ItemType {
     VIDEO = 'video',
 }
 
+export class Navigation {
+    constructor(readonly prev:string, readonly next:string) {
+    }
+}
+
 export class Item {
     constructor(
         readonly type: ItemType,
         readonly caption: string,
     ) { }
+    navigation: Navigation = null;
 }
 
 export class AlbumEntry {
@@ -93,13 +110,6 @@ export class Video extends Item {
         super(ItemType.VIDEO, caption);
     }
     readonly alternatives: VideoEntry[] = [];
-}
-
-export class Breadcrumb {
-    constructor(
-        readonly caption: string,
-        readonly path: string = '',
-    ) { }
 }
 
 export class Slab {

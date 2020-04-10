@@ -1,9 +1,17 @@
 {
     "caption": "corner cases",
     "items": {
+        "11ffeeb13f9a71e78771546a5c95d333": {
+            "caption": "shapes.png",
+            "date": "2020-02-28 10:00:00"
+        },
         "2fb65ea7667d740a5d64766882a228e9": {
             "caption": "EXIF_Orientation 0.jpg",
             "date": "2020-02-26 11:02:21"
+        },
+        "32445681bd7ebcccd7a6eaad223a42e8": {
+            "caption": "Loooooooooooooooooooooong very very very very very very very very very very loooooooooooooooong name",
+            "date": "2020-02-28 10:00:00"
         },
         "3a3afe8881eca89e8a8550731ef22870": {
             "caption": "EXIF_ExposureTime 0.jpg",
@@ -17,16 +25,24 @@
             "caption": "EXIF_Orientation 90.jpg",
             "date": "2020-02-26 11:02:37"
         },
+        "803a3669247bc5a333075c2ebde9a96e": {
+            "caption": "shapes.gif",
+            "date": "2020-02-28 10:00:00"
+        },
         "8087968cf4c57a056f7e284102efbfcb": {
             "caption": "# '^=@&_(.)-[,]+{;}$",
             "date": "2020-02-28 10:00:00"
         },
-        "c69a11e1c9e622050417245e013290f2": {
-            "caption": "pixel.jpg",
+        "a0e7e12c2cad27425b0d9948f7f85247": {
+            "caption": "pixel.png",
             "date": "2020-02-28 10:00:00"
         },
-        "ffb55107af211844afca25dde01918ce": {
-            "caption": "pixel",
+        "afd1a11219a5839a4733a09959fd3c1a": {
+            "caption": "shapes.jpg",
+            "date": "2020-02-28 10:00:00"
+        },
+        "c69a11e1c9e622050417245e013290f2": {
+            "caption": "pixel.jpg",
             "date": "2020-02-28 10:00:00"
         }
     }

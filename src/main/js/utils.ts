@@ -1,6 +1,6 @@
 import md5 from 'blueimp-md5';
 import { METADATA_FILE, THUMBNAIL_FILE, WAG_CONTAINER_ID, WAG_DIR } from "./constants";
-import { Dim2D, ItemType } from "./models";
+import { Dim2D, ItemType, AlbumListing, Navigation } from "./models";
 
 const IMAGE_EXT: Map<string, string> = new Map([
     ['jpg', 'image/jpeg'],
@@ -130,4 +130,23 @@ export function urldecodeSegments(path: string) {
         return undefined;
     }
     return path.split('/').map(decodeURIComponent).join('/');
+}
+
+export function getNavigation(elements: string[], isOfInterest: (e: string) => boolean, mapper: (e: string) => string) {
+    let isElementEncountered = false;
+    let prev: string = null;
+    let next: string = null;
+    for (let e of elements) {
+        if (isOfInterest(e)) {
+            isElementEncountered = true;
+            continue;
+        }
+        if (!isElementEncountered) {
+            prev = e;
+        } else {
+            next = e;
+            break;
+        }
+    }
+    return new Navigation(mapper(prev), mapper(next));
 }

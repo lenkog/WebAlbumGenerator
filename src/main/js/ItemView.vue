@@ -1,6 +1,5 @@
 <template>
     <div>
-        <item-header-view :model="model" />
         <image-view v-if="isImage()" :model="model" :window-size="windowSize" />
         <video-view v-else-if="isVideo()" :model="model" :window-size="windowSize" />
     </div>
@@ -10,19 +9,18 @@
 import Component from 'vue-class-component';
 
 import Vue from 'vue';
-import ItemHeaderView from './ItemHeaderView.vue';
 import ImageView from './ImageView.vue';
 import VideoView from './VideoView.vue';
 import { getItem } from './wag';
 import { PATHS, ROOT_CAPTION } from './constants';
 import { Route } from 'vue-router';
 import { trailingPath, urldecodeSegments } from './utils';
-import { Item, ItemType, Dim2D, ViewReadyInfo } from './models';
+import { Item, ItemType, Dim2D, ViewReadyInfo, Action } from './models';
 import { Prop } from 'vue-property-decorator';
+import { getAssetURL, ASSETS } from './service';
 
 @Component({
     components: {
-        ItemHeaderView,
         ImageView,
         VideoView
     }
@@ -36,11 +34,11 @@ export default class ItemView extends Vue {
     private cancelPendingRequest: () => void = null;
 
     isImage() {
-        return this.model !== null && this.model.type === ItemType.IMAGE;
+        return this.model?.type === ItemType.IMAGE;
     }
 
     isVideo() {
-        return this.model !== null && this.model.type === ItemType.VIDEO;
+        return this.model?.type === ItemType.VIDEO;
     }
 
     mounted() {
@@ -59,7 +57,23 @@ export default class ItemView extends Vue {
 
     onLoaded(model: Item) {
         this.model = model;
-        this.$emit('viewReady', new ViewReadyInfo(this.model.caption));
+        let actions = [
+            new Action(
+                'Previous',
+                this.model.navigation?.prev,
+                null,
+                getAssetURL(ASSETS.BTN_PREV),
+                !!this.model.navigation?.prev
+            ),
+            new Action(
+                'Next',
+                this.model.navigation?.next,
+                null,
+                getAssetURL(ASSETS.BTN_NEXT),
+                !!this.model.navigation?.next
+            )
+        ];
+        this.$emit('viewReady', new ViewReadyInfo(this.model.caption, actions));
     }
 
     beforeRouteUpdate(to: Route, from: Route, next: Function) {
